@@ -6,13 +6,19 @@ falls back to the colored rectangles, so you can add art one frame at a time.
 
 ## Canvas
 
-- Native canvas **640x360**, scaled x2 to a 1280x720 window.
-- Tile size **32x32**. Ground surface sits at y=280.
+- Native canvas **640x240**, scaled x3 to a 1920x720 window.
+- Tile size **32x32**. Ground surface sits at y=150.
 - Transparent PNG, no padding, one file per frame.
 
-(These are 2x the original v0/v1 numbers — sizes doubled across the board so
-32x32 sprite art shows real detail instead of being squashed into 16x16.
-The window size and all gameplay timing are unchanged.)
+Hazard/pig sizes are 2x the original v0/v1 numbers, so 32x32 art shows real
+detail instead of being squashed into 16x16 (gameplay timing is unchanged --
+see game.py's own notes on that). The canvas height is separate from that:
+it's cropped to the minimum needed to show the pig at max jump height, since
+the original 360 left a lot of sky above that line that nothing ever used.
+
+Art is authored bigger than these numbers (see `tools/build_sprites.py`) --
+the renderer fits it down at draw time and caches the result, so keep source
+files high-resolution rather than pre-shrinking them.
 
 ## Files
 

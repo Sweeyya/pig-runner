@@ -20,7 +20,11 @@ JUMP_V = 600.0                 # px/sec -- 2x original 300, same reasoning
 JUMP_CUT = 0.8                 # releasing while rising scales vy (dimensionless -- unchanged)
 
 # --- Hazard spacing, expressed in time so it stays fair as speed ramps -----
-MIN_GAP_SEC, MAX_GAP_SEC = 1.0, 1.6
+# MIN_GAP_SEC has a real floor: a platform can reach ~184px ahead of its own
+# bush, and dismounting one is a ~13-step fall (from PLATFORM_HEIGHT) before
+# a ground hazard is even reactable again. Too short a gap can put the next
+# hazard's own trigger window inside that fall, guaranteeing a late landing.
+MIN_GAP_SEC, MAX_GAP_SEC = 1.4, 2.0
 
 # --- Hitbox insets (collision box is smaller than the art, so near misses read
 # as near misses instead of feeling stolen) ----------------------------------

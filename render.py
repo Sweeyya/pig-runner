@@ -71,17 +71,35 @@ def has_sprites():
     return load_sprite("pig_run_00") is not None
 
 
-def _blit_sprite(surf, names, pos):
-    """Draw the first existing assets/<name>.png at pos. `names` is a single
-    name or a fallback list tried in order. Returns whether anything drew,
-    so callers can fall back to the colored-rectangle version."""
+_scaled_cache = {}
+
+
+def _blit_sprite(surf, names, pos, size=None):
+    """Draw the first existing assets/<name>.png at pos, scaled to `size` if
+    given. `names` is a single name or a fallback list tried in order.
+    Returns whether anything drew, so callers can fall back to the
+    colored-rectangle version.
+
+    Art is authored bigger than the game actually needs (see
+    tools/build_sprites.py) and fitted down here at draw time, cached per
+    (name, size) -- one clean downscale from real detail, rather than
+    pre-shrinking files to the exact pixel box up front and losing
+    whatever didn't survive that."""
     if isinstance(names, str):
         names = (names,)
     for name in names:
         sprite = load_sprite(name)
-        if sprite is not None:
-            surf.blit(sprite, pos)
-            return True
+        if sprite is None:
+            continue
+        if size is not None and sprite.get_size() != size:
+            key = (name, size)
+            scaled = _scaled_cache.get(key)
+            if scaled is None:
+                scaled = pygame.transform.smoothscale(sprite, size)
+                _scaled_cache[key] = scaled
+            sprite = scaled
+        surf.blit(sprite, pos)
+        return True
     return False
 
 
@@ -153,7 +171,7 @@ def _draw_clouds(surf, scroll):
 
 def _draw_bush(surf, hz):
     x, y = int(hz.x), W.GROUND_Y - hz.h
-    if _blit_sprite(surf, "bush_00", (x, y)):
+    if _blit_sprite(surf, "bush_00", (x, y), (hz.w, hz.h)):
         return
     pygame.draw.rect(surf, BUSH_DARK, (x, y, hz.w, hz.h))
     pygame.draw.rect(surf, BUSH_GREEN, (x + 1, y + 1, hz.w - 2, hz.h - 3))
@@ -164,7 +182,7 @@ def _draw_bush(surf, hz):
 
 def _draw_tall_obstacle(surf, hz):
     x, y = int(hz.x), W.GROUND_Y - hz.h
-    if _blit_sprite(surf, "tall_obstacle_00", (x, y)):
+    if _blit_sprite(surf, "tall_obstacle_00", (x, y), (hz.w, hz.h)):
         return
     pygame.draw.rect(surf, STONE_DARK, (x, y, hz.w, hz.h))
     block_h = hz.h / 2
@@ -176,7 +194,7 @@ def _draw_tall_obstacle(surf, hz):
 def _draw_snowball(surf, hz):
     x, y, w, h = hz.hitbox
     x, y, w, h = int(x), int(y), int(w), int(h)
-    if _blit_sprite(surf, "snowball_high_00" if hz.high else "snowball_low_00", (x, y)):
+    if _blit_sprite(surf, "snowball_high_00" if hz.high else "snowball_low_00", (x, y), (w, h)):
         return
     if hz.high:
         # a floating flurry -- tall band, jump can't reach through it
@@ -205,9 +223,15 @@ _HAZARD_DRAW = {
 
 
 def _draw_pig(surf, g, anim):
-    x, y = W.PIG_X, int(g.pig_y)
     name = f"pig_{anim.anim}_{anim.frame:02d}"
-    if _blit_sprite(surf, (name, "pig_run_00"), (x, y)):
+    if g.ducking:
+        # a duck sprite is shorter than a standing one -- anchor it to the
+        # ground directly rather than at g.pig_y (which assumes full PIG_H),
+        # or it would float above the ground by the height difference.
+        x, y, box = W.PIG_X, W.GROUND_Y - W.DUCK_H, (W.PIG_W, W.DUCK_H)
+    else:
+        x, y, box = W.PIG_X, int(g.pig_y), (W.PIG_W, W.PIG_H)
+    if _blit_sprite(surf, (name, "pig_run_00"), (x, y), box):
         return
 
     if g.ducking:

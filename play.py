@@ -18,14 +18,22 @@ import world as W
 from game import ACTION_DUCK, ACTION_JUMP, ACTION_NOOP, PigRunner
 from render import Animator, draw_hud, draw_world, _draw_debug
 
-# Empirically robust thresholds (px) for the scripted expert -- see the
-# jump-clearance tuning notes in game.py: tap apex ~34px, held apex ~94px.
-# 2x the original v0/v1 windows, matching world.py's 2x spatial scale.
-TAP_WINDOW = (32, 80)
-HOLD_WINDOW = (32, 140)
-DUCK_WINDOW = (-40, 60)  # duck has no physics carry-through like jump does --
-                         # must stay held for the hazard's full x-overlap
-PLATFORM_JUMP_WINDOW = (60, 180)
+# Windows are in *seconds*, not pixels -- distance / current speed. Speed
+# ramps up over an episode, so a fixed-pixel window quietly loses reaction
+# time as the game speeds up. A pure "divide the old pixel window by current
+# speed" conversion isn't quite enough either: hazard *width* is fixed in
+# pixels, so how much time a hazard spends overlapping the pig shrinks as
+# speed rises, while the jump's own arc duration doesn't change at all --
+# the two don't scale together. These windows were swept directly at four
+# points across the BASE_SPEED..MAX_SPEED range (200/250/300/340) and only
+# kept if they worked at all four, so they're robust across the whole ramp,
+# not just validated at one speed and assumed to generalize.
+TAP_WINDOW = (0.16, 0.30)
+HOLD_WINDOW = (0.16, 0.28)   # narrower than TAP -- a held jump needs near-full
+                             # commitment, so there's less slack in when to start
+DUCK_WINDOW = (-0.20, 0.30)  # duck has no physics carry-through like jump does
+                             # -- must stay held for the hazard's full x-overlap
+PLATFORM_JUMP_WINDOW = (0.20, 0.55)
 
 
 def _end_episode(g, anim, reason, episodes, args, always_reset):
@@ -44,27 +52,42 @@ def expert_action(g):
     hz = g.next_hazard()
     plat = g._next_platform()
 
-    if plat is not None and plat.x_start > W.PIG_X and g.on_ground:
-        d = plat.x_start - W.PIG_X
-        if PLATFORM_JUMP_WINDOW[0] <= d <= PLATFORM_JUMP_WINDOW[1]:
+    # A duck call is the most urgent: it's the only response to a floating
+    # hazard, and jumping onto a platform instead (a leftover trigger from
+    # an earlier bush that hasn't scrolled off yet) would jump straight
+    # into it. Check the imminent hazard before ever considering a platform.
+    imminent_duck = (
+        hz is not None and hz.bottom_band > 0
+        and DUCK_WINDOW[0] <= (hz.x - W.PIG_X) / g.speed <= DUCK_WINDOW[1]
+    )
+
+    if not imminent_duck and plat is not None and plat.x_start > W.PIG_X and g.on_ground:
+        t = (plat.x_start - W.PIG_X) / g.speed
+        if PLATFORM_JUMP_WINDOW[0] <= t <= PLATFORM_JUMP_WINDOW[1]:
             return ACTION_JUMP
-    if plat is not None and plat.covers(W.PIG_X) and not g.on_ground:
+    if not imminent_duck and plat is not None and plat.covers(W.PIG_X) and not g.on_ground:
         return ACTION_JUMP  # keep rising onto the deck
 
     if hz is None:
         return ACTION_NOOP
-    d = hz.x - W.PIG_X
+    t = (hz.x - W.PIG_X) / g.speed
 
     if hz.bottom_band > 0:  # floating -- duck under it
-        if DUCK_WINDOW[0] <= d <= DUCK_WINDOW[1]:
+        if DUCK_WINDOW[0] <= t <= DUCK_WINDOW[1]:
             return ACTION_DUCK
         return ACTION_NOOP
 
+    # No "and g.on_ground" gate here on purpose: sending JUMP while airborne
+    # and still falling (not yet landed, e.g. dismounting a platform) is a
+    # harmless no-op in the physics, but it means that if the window is
+    # already open at the moment landing actually happens, the launch
+    # fires on that exact frame -- instead of missing entirely because the
+    # window had already closed by the time on_ground next became true.
     if hz.top_band > 60:  # needs a full hold
-        if HOLD_WINDOW[0] <= d <= HOLD_WINDOW[1] and g.on_ground:
+        if HOLD_WINDOW[0] <= t <= HOLD_WINDOW[1]:
             return ACTION_JUMP
     else:
-        if TAP_WINDOW[0] <= d <= TAP_WINDOW[1] and g.on_ground:
+        if TAP_WINDOW[0] <= t <= TAP_WINDOW[1]:
             return ACTION_JUMP
 
     if not g.on_ground and g.vy < 0:

@@ -19,16 +19,21 @@ SPAWN_WEIGHTS = {
 }
 
 # --- Speed ramp -----------------------------------------------------------
-# px/sec values are 2x the original v0/v1 tuning, matching world.py's 2x
-# spatial scale -- RAMP_STEPS is a step count, not a distance, so it's
-# untouched and the ramp still takes the same real time.
+# Pace is a gameplay-feel choice, independent of the world's pixel scale --
+# kept at the original v0 pace (not doubled along with everything spatial)
+# since a human found the doubled speed too fast to react to.
 ENABLE_SPEED_RAMP = True
-BASE_SPEED = 400.0      # px/sec at episode start
-MAX_SPEED = 680.0       # px/sec ceiling
+BASE_SPEED = 200.0      # px/sec at episode start
+MAX_SPEED = 340.0       # px/sec ceiling
 RAMP_STEPS = 700.0      # steps to go from BASE_SPEED to MAX_SPEED
 
 # --- Platforms --------------------------------------------------------
 # A platform spans a hazard, giving an alternate route: jump onto it, run
 # across, drop back down, instead of timing a jump over the hazard itself.
+# Height is well below the hold-jump apex (~94px) on purpose -- a human
+# doesn't time a jump as precisely as a script, so landing on top should
+# only need "a decent jump", not "an exactly-held max-height jump". 60 is
+# also the floor for a different reason: any lower and a pig resting on
+# the deck vertically overlaps the bush hitbox underneath it.
 PLATFORM_CHANCE = 0.5   # fraction of eligible hazards that get one
-PLATFORM_HEIGHT = 68.0  # px above ground the platform surface sits
+PLATFORM_HEIGHT = 60.0  # px above ground the platform surface sits
