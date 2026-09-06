@@ -37,9 +37,8 @@ DIST_CLIP_LO, DIST_CLIP_HI = -0.5, 1.5
 
 ACTION_NOOP = 0
 ACTION_JUMP = 1
-ACTION_DUCK = 2
-NUM_ACTIONS = 3
-OBS_DIM = 9
+NUM_ACTIONS = 2
+OBS_DIM = 11
 
 
 def _clip(v):
@@ -72,10 +71,12 @@ class PigRunner:
         self.pig_y = float(W.PIG_GROUND_Y)
         self.vy = 0.0
         self.on_ground = True
-        self.ducking = False
         self.hazards = [H.Bush(float(W.FIRST_X))]
         self.platforms = []
         self._speed = C.BASE_SPEED
+        self._last_spawn_x = float(W.FIRST_X)
+        self._prev_was_platform = False
+        self._next_plan = H.plan_next(self._rng)
         self._next_gap_px = self._sample_gap_px()
         self.score = 0
         self.steps = 0
@@ -83,7 +84,8 @@ class PigRunner:
         return self.observation()
 
     def _sample_gap_px(self):
-        return self._rng.uniform(MIN_GAP_SEC, MAX_GAP_SEC) * self._speed
+        base = self._rng.uniform(MIN_GAP_SEC, MAX_GAP_SEC) * self._speed
+        return base + H.extra_gap_px(self._next_plan, self._prev_was_platform, self._speed)
 
     def _current_speed(self):
         if not C.ENABLE_SPEED_RAMP:
@@ -99,7 +101,6 @@ class PigRunner:
 
         self._speed = self._current_speed()
         jump_held = action == ACTION_JUMP
-        self.ducking = action == ACTION_DUCK and self.on_ground
 
         # Variable-height jump: press to launch, release while rising to cut it
         # short. No hidden timers -- vy and on_ground fully describe the arc.
@@ -125,15 +126,28 @@ class PigRunner:
                 reward += 1.0
         for p in self.platforms:
             p.update(dx)
+        self._last_spawn_x -= dx
 
         self.hazards = [h for h in self.hazards if h.right >= 0.0]
         self.platforms = [p for p in self.platforms if p.right >= 0.0]
 
-        if not self.hazards or (W.SPAWN_X - self.hazards[-1].x) >= self._next_gap_px:
-            hz, plat = H.spawn_next(float(W.SPAWN_X), self._rng, platform_active=bool(self.platforms))
+        if (W.SPAWN_X - self._last_spawn_x) >= self._next_gap_px:
+            hz, plat = H.materialize(self._next_plan, float(W.SPAWN_X), self._rng)
             self.hazards.append(hz)
+            # A platform can physically extend past whatever hazard sits on
+            # or under it (its own trailing margin beyond a deck hazard, or
+            # the margin beyond a plain ground bush) -- the next gap must be
+            # measured from that real rightmost extent, not just the hazard's
+            # x, or the pig can still be riding the platform well after the
+            # gap "should" have elapsed.
+            self._last_spawn_x = hz.x
             if plat is not None:
                 self.platforms.append(plat)
+                if plat.deck_hazard is not None:
+                    self.hazards.append(plat.deck_hazard)
+                self._last_spawn_x = max(self._last_spawn_x, plat.x_end)
+            self._prev_was_platform = plat is not None
+            self._next_plan = H.plan_next(self._rng)
             self._next_gap_px = self._sample_gap_px()
 
         # Landing: normally the real ground, but if the pig is already at or
@@ -141,10 +155,14 @@ class PigRunner:
         # "at or above" gate (checked against prev_y, before this frame's
         # fall) is what stops a pig walking on real ground from being
         # snapped upward just because a platform happens to scroll overhead.
+        # Both targets are the pig's *top-left* landing position, so a
+        # platform target must subtract PIG_H the same way W.PIG_GROUND_Y
+        # already does for the ground -- landing_y is where the pig's feet
+        # end up, not where its head is.
         landing_y = float(W.PIG_GROUND_Y)
         plat = self._active_platform()
-        if plat is not None and prev_y <= plat.surface_y:
-            landing_y = plat.surface_y
+        if plat is not None and prev_y <= plat.surface_y - W.PIG_H:
+            landing_y = plat.surface_y - W.PIG_H
 
         if self.pig_y >= landing_y:
             self.pig_y = landing_y
@@ -175,10 +193,16 @@ class PigRunner:
 
     # -- observation --------------------------------------------------------
     def next_hazard(self):
-        return _first_ahead(self.hazards)
+        """Next hazard on the ground lane (not sitting on a platform deck)."""
+        return _first_ahead([h for h in self.hazards if not h.on_platform])
 
     def _next_platform(self):
         return _first_ahead(self.platforms)
+
+    def next_platform_hazard(self):
+        """Next hazard on a platform's deck, if any -- a separate lane from
+        the ground, since both can be relevant to choose between at once."""
+        return _first_ahead([h for h in self.hazards if h.on_platform])
 
     def observation(self):
         """The numbers the agent sees. Never pixels."""
@@ -197,6 +221,13 @@ class PigRunner:
             p_dist = _dist_to(max(plat.x_start, float(W.PIG_X)))
             p_height = plat.height / OBS_HEIGHT_SCALE
 
+        plat_hz = self.next_platform_hazard()
+        if plat_hz is None:
+            ph_bottom, ph_top = 0.0, 0.0
+        else:
+            ph_bottom = plat_hz.bottom_band / OBS_HEIGHT_SCALE
+            ph_top = plat_hz.top_band / OBS_HEIGHT_SCALE
+
         height = (W.PIG_GROUND_Y - self.pig_y) / OBS_HEIGHT_SCALE
         vel = -self.vy / JUMP_V
         speed_span = C.MAX_SPEED - C.BASE_SPEED
@@ -205,7 +236,7 @@ class PigRunner:
         return [
             float(dist), float(height), float(vel), 1.0 if self.on_ground else 0.0,
             float(speed_norm), float(h_bottom), float(h_top),
-            float(p_dist), float(p_height),
+            float(p_dist), float(p_height), float(ph_bottom), float(ph_top),
         ]
 
     @property
@@ -214,13 +245,9 @@ class PigRunner:
 
     @property
     def pig_hitbox(self):
-        if self.ducking:
-            top, h = self.pig_y + (W.PIG_H - W.DUCK_H), W.DUCK_H
-        else:
-            top, h = self.pig_y, W.PIG_H
         return (
             W.PIG_X + PIG_INSET,
-            top + PIG_INSET,
+            self.pig_y + PIG_INSET,
             W.PIG_W - 2 * PIG_INSET,
-            h - 2 * PIG_INSET,
+            W.PIG_H - 2 * PIG_INSET,
         )

@@ -3,10 +3,11 @@
 ![demo](assets/demo.gif)
 
 A Minecraft-flavored endless runner built as an RL environment. A pig
-auto-runs right; sweet berry bushes, stacked blocks, a snow golem, and
-elevated platforms come at it; jump, duck, or take the high road. Built to
-train under [r2dreamer](https://github.com/NM512/r2dreamer) (DreamerV3), but
-the interface is plain Gym-shaped enough to point any algorithm at it.
+auto-runs right; sweet berry bushes, snow golems, and elevated grass
+platforms come at it — jump, or take the high road, which has its own
+hazards to clear once you're up there. Built to train under
+[r2dreamer](https://github.com/NM512/r2dreamer) (DreamerV3), but the
+interface is plain Gym-shaped enough to point any algorithm at it.
 
 Not affiliated with or endorsed by Mojang — inspired by Minecraft, built with
 entirely original art and code.
@@ -15,7 +16,7 @@ entirely original art and code.
 
 ## Why this exists
 
-The environment is deliberately small: 9 numbers in, 3 actions out, no
+The environment is deliberately small: 11 numbers in, 2 actions out, no
 pixels anywhere near the agent. That's what makes training fast enough to
 iterate on a laptop-class GPU (or Colab's free tier — see below). The design
 choices are covered in more depth further down, but the short version: every
@@ -28,7 +29,7 @@ type label, so the agent has to read the situation, not memorize a pattern.
 git clone <this repo>
 cd pig-runner
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
-.venv/bin/python play.py                 # SPACE jump (hold for height), DOWN/S duck
+.venv/bin/python play.py                 # SPACE jump (hold for height)
 .venv/bin/python play.py --mode expert   # what "solved" looks like
 .venv/bin/python play.py --mode random   # the untrained baseline
 ```
@@ -42,48 +43,55 @@ Every hazard is a flag. Flip one, run `play.py`, get a different game — no
 other code changes needed:
 
 ```python
-ENABLE_TALL_OBSTACLE = True   # needs a held jump, not a tap
-ENABLE_SNOW_GOLEM     = True   # forces a jump-or-duck read
-ENABLE_PLATFORMS      = True   # alternate route: jump up and over instead
-ENABLE_SPEED_RAMP     = True   # pace picks up over the episode
+ENABLE_SNOW_GOLEM = True   # needs a held jump, not a tap
+ENABLE_PLATFORMS  = True   # alternate route over a bush -- with its own hazards on deck
+ENABLE_SPEED_RAMP = True   # pace picks up over the episode
 ```
 
-All four off reproduces the original minimal version exactly: one hazard
-(the bush), two actions, fixed speed.
+Both hazard flags off reproduces the original minimal version exactly: one
+hazard (the bush), two actions, fixed speed.
 
 ## The game
 
 | | |
 |---|---|
-| Actions | `0` nothing, `1` jump (hold for height), `2` duck |
-| Hazards | bush (tap-jump), 2-block stack (held jump), snow golem shot (jump low ones, duck high ones), platform (alternate route over a bush) |
-| Observation | 9 floats, **never pixels** — see below |
+| Actions | `0` nothing, `1` jump (hold for height) |
+| Hazards | bush (tap-jump), snow golem (held jump) — either can appear on the ground or on a platform's deck |
+| Observation | 11 floats, **never pixels** — see below |
 | Reward | +1 per hazard cleared, 0 otherwise, 0 on death |
 | Episode ends | on death; capped at 1000 steps (~20s at 50 steps/s) |
 | Speed | ramps from 200 to 340 px/s over the episode |
 
-Baselines with everything on: random policy scores **0-3** and dies within
-the first few hundred steps; a scripted policy that reads each hazard's
-height correctly scores **16-19** and survives the full cap. That gap is the
+A platform is terrain, not a hazard — it always spans a ground-level bush,
+so there's always a route underneath. Jumping onto one instead skips that
+bush, but the deck itself may carry its own bush or snow golem to clear
+while riding it, so the elevated route isn't a free bypass.
+
+Baselines with everything on: random policy scores **0** and dies within the
+first few hundred steps; a scripted policy that reads each hazard's height
+correctly scores **9-11** and survives the full cap. That gap is the
 learning signal.
 
 ## Observation
 
 | # | Value | Notes |
 |---|---|---|
-| 0 | distance to next hazard | fraction of screen width |
+| 0 | distance to next ground hazard | fraction of screen width |
 | 1 | pig height above ground | 0 when grounded |
 | 2 | vertical velocity | positive is up |
-| 3 | on ground | 0 or 1 (true whether on real ground or a platform) |
+| 3 | on ground | 0 or 1 (true whether on real ground or a platform's deck) |
 | 4 | current speed | normalized 0 (start) to 1 (ramp cap) — without this, "distance" alone would mean a different amount of reaction time depending on speed |
-| 5, 6 | next hazard's bottom/top band | the height range it occupies above ground — this is what makes jump-vs-duck a numeric decision, not a hidden type label |
+| 5, 6 | next ground hazard's bottom/top band | the height range it occupies above ground — this is what makes tap-vs-hold a numeric decision, not a hidden type label |
 | 7, 8 | next platform's distance/height | clipped far/0 if none is coming |
+| 9, 10 | next platform-deck hazard's bottom/top band | same idea as 5/6, but for whatever's waiting on the platform itself — 0/0 if the platform (or no platform) carries none |
+
+Ground and platform-deck hazards get separate observation fields on purpose:
+both can matter to the agent at once (which one to jump for depends on
+whether it's currently riding a platform or not), so collapsing them into
+one shared field would hide information rather than simplify it.
 
 Jumping is variable-height: press to launch, hold to keep rising, release to
-cut the arc short. Ducking has no physics of its own — it's a hitbox change
-that only lasts as long as the action is held, so it has to stay pressed for
-a hazard's entire pass, unlike jump which carries through on its own once
-launched.
+cut the arc short.
 
 ## Files
 

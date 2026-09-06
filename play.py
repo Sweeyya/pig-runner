@@ -1,11 +1,11 @@
 """Watch or play the game.
 
-    python play.py                  # play it yourself: SPACE jump, DOWN/S duck
+    python play.py                  # play it yourself: SPACE to jump (hold for height)
     python play.py --mode expert    # scripted policy, a reference for "solved"
     python play.py --mode random    # random policy, the untrained baseline
     python play.py --mode expert --record run.gif --episodes 1
 
-Keys: SPACE jump (hold for height) | DOWN/S duck | D debug overlay | R reset | ESC quit
+Keys: SPACE jump (hold for height) | D debug overlay | R reset | ESC quit
 """
 
 import argparse
@@ -15,7 +15,7 @@ import pygame
 
 import game as G
 import world as W
-from game import ACTION_DUCK, ACTION_JUMP, ACTION_NOOP, PigRunner
+from game import ACTION_JUMP, ACTION_NOOP, PigRunner
 from render import Animator, draw_hud, draw_world, _draw_debug
 
 # Windows are in *seconds*, not pixels -- distance / current speed. Speed
@@ -27,7 +27,9 @@ from render import Animator, draw_hud, draw_world, _draw_debug
 # the two don't scale together. These windows were swept directly at four
 # points across the BASE_SPEED..MAX_SPEED range (200/250/300/340) and only
 # kept if they worked at all four, so they're robust across the whole ramp,
-# not just validated at one speed and assumed to generalize.
+# not just validated at one speed and assumed to generalize. Reused as-is
+# for a hazard on a platform's deck too -- x-distance and height are all
+# that matter to the timing, the elevation doesn't change any of it.
 TAP_WINDOW = (0.05, 0.30)   # lower bound has margin beyond the bare minimum --
                             # a platform dismount is a real ~13-step fall, and
                             # a tight window can close one frame before landing
@@ -36,9 +38,12 @@ HOLD_WINDOW = (0.30, 0.50)   # later than TAP, not just narrower -- at the
                              # window doesn't open until later relative to
                              # arrival than it used to; re-swept from scratch
                              # rather than assumed to shift by a fixed amount
-DUCK_WINDOW = (-0.20, 0.30)  # duck has no physics carry-through like jump does
-                             # -- must stay held for the hazard's full x-overlap
-PLATFORM_JUMP_WINDOW = (0.20, 0.55)
+PLATFORM_JUMP_WINDOW = (0.15, 0.50)  # re-swept after fixing the landing-position
+                                     # bug -- the old (buggy) landing target was
+                                     # more lenient, so the window that worked
+                                     # against it no longer reliably lands now
+                                     # that the bar for "counted as landed" is
+                                     # the real one
 
 
 def _end_episode(g, anim, reason, episodes, args, always_reset):
@@ -53,41 +58,49 @@ def _end_episode(g, anim, reason, episodes, args, always_reset):
     return episodes, stop
 
 
+def _wants_jump(hz, g):
+    """Should we press jump right now to clear this hazard? Works the same
+    whether hz is on the ground or on a platform's deck -- only x-distance
+    and its own height matter, not absolute elevation."""
+    if hz is None:
+        return False
+    t = (hz.x - W.PIG_X) / g.speed
+    if hz.top_band > 60:  # needs a full hold
+        return HOLD_WINDOW[0] <= t <= HOLD_WINDOW[1]
+    return TAP_WINDOW[0] <= t <= TAP_WINDOW[1]
+
+
+def _riding_platform(g, plat):
+    """True only if the pig is actually standing on plat's deck -- not just
+    grounded while plat's x-span happens to pass overhead. _active_platform()
+    alone only checks x-coverage, so it doesn't distinguish the two."""
+    return (
+        plat is not None and g.on_ground
+        and g.pig_y <= plat.surface_y - W.PIG_H + 1.0
+    )
+
+
 def expert_action(g):
+    active = g._active_platform()
+
+    # Actually on a platform's deck right now: the ground lane doesn't exist
+    # from up here, so only the deck's own hazard (if any) matters.
+    if _riding_platform(g, active):
+        return ACTION_JUMP if _wants_jump(g.next_platform_hazard(), g) else ACTION_NOOP
+
     hz = g.next_hazard()
     plat = g._next_platform()
 
-    # A floating hazard blocks any platform-jump consideration entirely, not
-    # just while it's within its own tight duck-trigger window: PLATFORM_MARGIN
-    # is wide enough that a *later* bush's platform can already be a valid
-    # jump target while an earlier, unrelated floating hazard still needs to
-    # be ducked -- jumping toward that platform would leave the pig airborne
-    # (unable to duck) exactly when it needs to. If a floating hazard is
-    # closer than the platform, deal with that first, full stop.
-    floating_hazard_first = (
-        hz is not None and hz.bottom_band > 0 and plat is not None and hz.x < plat.x_start
-    )
-    imminent_duck = (
-        hz is not None and hz.bottom_band > 0
-        and DUCK_WINDOW[0] <= (hz.x - W.PIG_X) / g.speed <= DUCK_WINDOW[1]
-    )
-    suppress_platform = imminent_duck or floating_hazard_first
-
-    if not suppress_platform and plat is not None and plat.x_start > W.PIG_X and g.on_ground:
+    # Consider jumping onto an upcoming platform. A held jump big enough to
+    # reach the deck is also more than enough to clear whatever ground hazard
+    # it spans (platforms only ever pair with a short bush), so there's no
+    # conflict between "aim for the platform" and "clear what's beneath it."
+    if plat is not None and plat.x_start > W.PIG_X and g.on_ground:
         t = (plat.x_start - W.PIG_X) / g.speed
         if PLATFORM_JUMP_WINDOW[0] <= t <= PLATFORM_JUMP_WINDOW[1]:
             return ACTION_JUMP
-    if not suppress_platform and plat is not None and plat.covers(W.PIG_X) and not g.on_ground:
+    if plat is not None and plat.covers(W.PIG_X) and not g.on_ground:
         return ACTION_JUMP  # keep rising onto the deck
-
-    if hz is None:
-        return ACTION_NOOP
-    t = (hz.x - W.PIG_X) / g.speed
-
-    if hz.bottom_band > 0:  # floating -- duck under it
-        if DUCK_WINDOW[0] <= t <= DUCK_WINDOW[1]:
-            return ACTION_DUCK
-        return ACTION_NOOP
 
     # No "and g.on_ground" gate here on purpose: sending JUMP while airborne
     # and still falling (not yet landed, e.g. dismounting a platform) is a
@@ -95,13 +108,8 @@ def expert_action(g):
     # already open at the moment landing actually happens, the launch
     # fires on that exact frame -- instead of missing entirely because the
     # window had already closed by the time on_ground next became true.
-    if hz.top_band > 60:  # needs a full hold
-        if HOLD_WINDOW[0] <= t <= HOLD_WINDOW[1]:
-            return ACTION_JUMP
-    else:
-        if TAP_WINDOW[0] <= t <= TAP_WINDOW[1]:
-            return ACTION_JUMP
-
+    if _wants_jump(hz, g):
+        return ACTION_JUMP
     if not g.on_ground and g.vy < 0:
         return ACTION_JUMP  # already committed to this jump -- keep holding
     return ACTION_NOOP
@@ -152,12 +160,7 @@ def main():
         if not g.dead:
             if args.mode == "human":
                 keys = pygame.key.get_pressed()
-                if keys[pygame.K_SPACE]:
-                    action = ACTION_JUMP
-                elif keys[pygame.K_DOWN] or keys[pygame.K_s]:
-                    action = ACTION_DUCK
-                else:
-                    action = ACTION_NOOP
+                action = ACTION_JUMP if keys[pygame.K_SPACE] else ACTION_NOOP
             elif args.mode == "expert":
                 action = expert_action(g)
             else:

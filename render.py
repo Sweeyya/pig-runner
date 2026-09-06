@@ -34,8 +34,7 @@ STONE      = (150, 150, 155)
 STONE_DARK = (110, 110, 116)
 SNOW_WHITE = (240, 246, 250)
 SNOW_SHADE = (200, 215, 225)
-PLATFORM_TOP  = (168, 128,  86)
-PLATFORM_SIDE = (128,  92,  60)
+GOLEM_NOSE = (219, 130,  40)
 HITBOX     = (255,  64,  64)
 BAND       = (255, 190,  60)
 TEXT       = (250, 250, 250)
@@ -44,7 +43,7 @@ SCORE_COL  = (255, 255, 255)
 
 # Animation frame counts -- the contract your sprite sheet must satisfy.
 ANIM_FRAMES = {
-    "run": 4, "rise": 1, "fall": 1, "land": 1, "duck": 1, "death": 4,
+    "run": 4, "rise": 1, "fall": 1, "land": 1, "death": 4,
     # reserved so v1/v2 art slots in without renumbering anything
     "mine": 4, "place": 3,
 }
@@ -130,8 +129,6 @@ class Animator:
         if airborne:
             self.anim = "rise" if g.vy < 0 else "fall"
             self.frame = 0
-        elif g.ducking:
-            self.anim, self.frame = "duck", 0
         elif self._land > 0:
             self._land -= 1
             self.anim, self.frame = "land", 0
@@ -170,7 +167,7 @@ def _draw_clouds(surf, scroll):
 
 
 def _draw_bush(surf, hz):
-    x, y = int(hz.x), W.GROUND_Y - hz.h
+    x, y = int(hz.x), int(hz.surface_y - hz.h)
     if _blit_sprite(surf, "bush_00", (x, y), (hz.w, hz.h)):
         return
     pygame.draw.rect(surf, BUSH_DARK, (x, y, hz.w, hz.h))
@@ -180,66 +177,45 @@ def _draw_bush(surf, hz):
             pygame.draw.rect(surf, BERRY_RED, (x + bx, y + by, 2, 2))
 
 
-def _draw_tall_obstacle(surf, hz):
-    x, y = int(hz.x), W.GROUND_Y - hz.h
-    if _blit_sprite(surf, "tall_obstacle_00", (x, y), (hz.w, hz.h)):
+def _draw_snow_golem(surf, hz):
+    x, y = int(hz.x), int(hz.surface_y - hz.h)
+    if _blit_sprite(surf, "snow_golem_00", (x, y), (hz.w, hz.h)):
         return
-    pygame.draw.rect(surf, STONE_DARK, (x, y, hz.w, hz.h))
-    block_h = hz.h / 2
-    for i in range(2):
-        by = y + i * block_h
-        pygame.draw.rect(surf, STONE, (x + 4, by + 4, hz.w - 8, block_h - 8))
-
-
-def _draw_snowball(surf, hz):
-    x, y, w, h = hz.hitbox
-    x, y, w, h = int(x), int(y), int(w), int(h)
-    if _blit_sprite(surf, "snowball_high_00" if hz.high else "snowball_low_00", (x, y), (w, h)):
-        return
-    if hz.high:
-        # a floating flurry -- tall band, jump can't reach through it
-        cy = y + h // 2
-        for i, r in enumerate((20, 16, 20)):
-            pygame.draw.circle(surf, SNOW_WHITE, (x + w // 2, cy - 24 + i * 24), r)
-            pygame.draw.circle(surf, SNOW_SHADE, (x + w // 2, cy - 24 + i * 24), r, 4)
-    else:
-        pygame.draw.circle(surf, SNOW_WHITE, (x + w // 2, y + h // 2), max(12, w // 2))
-        pygame.draw.circle(surf, SNOW_SHADE, (x + w // 2, y + h // 2), max(12, w // 2), 4)
+    # two stacked snow blocks (bigger below, smaller above) plus a small
+    # pumpkin-orange nose -- reads as "snow golem", not just "tall block".
+    w = hz.w
+    lower_h = int(hz.h * 0.58)
+    upper_h = hz.h - lower_h
+    pygame.draw.rect(surf, SNOW_SHADE, (x, y + upper_h, w, lower_h))
+    pygame.draw.rect(surf, SNOW_WHITE, (x + 3, y + upper_h + 3, w - 6, lower_h - 6))
+    head_w = int(w * 0.8)
+    hx = x + (w - head_w) // 2
+    pygame.draw.rect(surf, SNOW_SHADE, (hx, y, head_w, upper_h))
+    pygame.draw.rect(surf, SNOW_WHITE, (hx + 3, y + 3, head_w - 6, upper_h - 6))
+    pygame.draw.rect(surf, GOLEM_NOSE, (hx + head_w - 6, y + upper_h // 2 - 2, 6, 4))
 
 
 def _draw_platform(surf, p):
+    # A grass block, not a wooden plank: green cap + dirt body, reusing the
+    # exact ground palette so it reads as "the same grass," not a new material.
     x = int(p.x_start)
     w = int(p.x_end - p.x_start)
     y = int(p.surface_y)
-    pygame.draw.rect(surf, PLATFORM_TOP, (x, y, w, 8))
-    pygame.draw.rect(surf, PLATFORM_SIDE, (x, y + 8, w, PLATFORM_THICKNESS - 8))
+    pygame.draw.rect(surf, GRASS_TOP, (x, y, w, 8))
+    pygame.draw.rect(surf, GRASS_EDGE, (x, y + 8, w, 4))
+    pygame.draw.rect(surf, DIRT, (x, y + 12, w, PLATFORM_THICKNESS - 12))
 
 
 _HAZARD_DRAW = {
     "bush": _draw_bush,
-    "tall_obstacle": _draw_tall_obstacle,
-    "snow_golem": _draw_snowball,
+    "snow_golem": _draw_snow_golem,
 }
 
 
 def _draw_pig(surf, g, anim):
     name = f"pig_{anim.anim}_{anim.frame:02d}"
-    if g.ducking:
-        # a duck sprite is shorter than a standing one -- anchor it to the
-        # ground directly rather than at g.pig_y (which assumes full PIG_H),
-        # or it would float above the ground by the height difference.
-        x, y, box = W.PIG_X, W.GROUND_Y - W.DUCK_H, (W.PIG_W, W.DUCK_H)
-    else:
-        x, y, box = W.PIG_X, int(g.pig_y), (W.PIG_W, W.PIG_H)
-    if _blit_sprite(surf, (name, "pig_run_00"), (x, y), box):
-        return
-
-    if g.ducking:
-        w, h = W.PIG_W, W.DUCK_H
-        y = W.GROUND_Y - h
-        pygame.draw.rect(surf, PIG_PINK, (x, y, w, h))
-        pygame.draw.rect(surf, PIG_DARK, (x, y + h - 2, w, 2))
-        pygame.draw.rect(surf, PIG_SNOUT, (x + w - 4, y + 1, 4, 3))
+    x, y = W.PIG_X, int(g.pig_y)
+    if _blit_sprite(surf, (name, "pig_run_00"), (x, y), (W.PIG_W, W.PIG_H)):
         return
 
     sx, sy = anim.squash()
@@ -284,37 +260,49 @@ DREAM_PLATFORM = (170, 190, 240, 130)
 DREAM_LABEL = (215, 225, 255)
 
 
+def _draw_dream_band(surf, x, y_top, y_bot, width):
+    h = max(2.0, y_bot - y_top)
+    band = pygame.Surface((width, h), pygame.SRCALPHA)
+    band.fill(DREAM_HAZARD_FILL)
+    surf.blit(band, (x, y_top))
+    pygame.draw.rect(surf, DREAM_HAZARD_LINE, (x, y_top, width, h), 1)
+
+
 def draw_dream(surf, obs, scroll=0.0, hazard_w=64.0):
     """Render a scene from *predicted* numbers instead of real game state --
     this is what the world model imagines, not what actually happened.
 
-    obs is the 9-float vector game.py's observation() produces: the model
+    obs is the 11-float vector game.py's observation() produces: the model
     predicts exactly these fields and nothing else, so this draws only what
     it could plausibly have predicted -- a generic hazard silhouette at the
     right distance and height band, never a specific sprite, since "which
     hazard is this" was never one of the numbers it predicted.
     """
-    dist, height, _vel, _on_ground, _speed, h_bottom, h_top, p_dist, p_height = obs
+    (dist, height, _vel, _on_ground, _speed, h_bottom, h_top,
+     p_dist, p_height, ph_bottom, ph_top) = obs
 
     surf.fill(SKY)
     _draw_clouds(surf, scroll)
     _draw_ground(surf)
 
-    if p_dist < DIST_CLIP_HI - 1e-3 and p_height > 1e-3:
+    has_platform = p_dist < DIST_CLIP_HI - 1e-3 and p_height > 1e-3
+    if has_platform:
         px = W.PIG_X + p_dist * OBS_DIST_SCALE
         py = W.GROUND_Y - p_height * OBS_HEIGHT_SCALE
         deck = pygame.Surface((320, PLATFORM_THICKNESS), pygame.SRCALPHA)
         deck.fill(DREAM_PLATFORM)
         surf.blit(deck, (px - 160, py))
+        if ph_top > 1e-3:
+            hx = px - 160 + 160
+            y_top = py - ph_top * OBS_HEIGHT_SCALE
+            y_bot = py - ph_bottom * OBS_HEIGHT_SCALE
+            _draw_dream_band(surf, hx, y_top, y_bot, hazard_w)
 
     if dist < DIST_CLIP_HI - 1e-3:
         hx = W.PIG_X + dist * OBS_DIST_SCALE
         y_top = W.GROUND_Y - h_top * OBS_HEIGHT_SCALE
         y_bot = W.GROUND_Y - h_bottom * OBS_HEIGHT_SCALE
-        band = pygame.Surface((hazard_w, max(2.0, y_bot - y_top)), pygame.SRCALPHA)
-        band.fill(DREAM_HAZARD_FILL)
-        surf.blit(band, (hx, y_top))
-        pygame.draw.rect(surf, DREAM_HAZARD_LINE, (hx, y_top, hazard_w, max(2.0, y_bot - y_top)), 1)
+        _draw_dream_band(surf, hx, y_top, y_bot, hazard_w)
 
     py = W.PIG_GROUND_Y - height * OBS_HEIGHT_SCALE
     pygame.draw.rect(surf, DREAM_PIG, (W.PIG_X, py, W.PIG_W, W.PIG_H))
@@ -350,6 +338,7 @@ def _draw_debug(win, g, font, scale):
         f"speed  {obs[4]:+.3f}",
         f"hz lo/hi {obs[5]:+.3f}/{obs[6]:+.3f}",
         f"plat d/h {obs[7]:+.3f}/{obs[8]:+.3f}",
+        f"plat hz lo/hi {obs[9]:+.3f}/{obs[10]:+.3f}",
     ]
     for i, line in enumerate(lines):
         img = font.render(line, True, TEXT, TEXT_BG)

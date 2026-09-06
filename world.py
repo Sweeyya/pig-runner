@@ -27,7 +27,6 @@ GROUND_Y = 300                 # y of the ground surface
 PIG_X = 96                     # pig is fixed in x; the world scrolls past it
 PIG_W, PIG_H = 64, 64
 PIG_GROUND_Y = GROUND_Y - PIG_H
-DUCK_H = 32                    # crouched height; pig's feet stay planted
 
 SPAWN_X = NATIVE_W + 80
 FIRST_X = NATIVE_W + 120       # extra room before the first hazard

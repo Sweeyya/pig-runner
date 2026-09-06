@@ -110,9 +110,6 @@ def main():
     save(place(run, 256, 256, 1.05, 0.95), "pig_fall_00")    # slight squash, trailing legs
     save(place(still, 256, 256, 1.30, 0.75), "pig_land_00")  # dramatic squash
 
-    duck = place(still, 256, 128, 1.15, 1.0)
-    save(duck, "pig_duck_00")
-
     # Death: same base pose, increasingly red and increasingly faded/squashed
     # -- reads as "hurt" then "poofing away" across the 4 frames.
     steps = [
