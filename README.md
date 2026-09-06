@@ -34,8 +34,10 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 .venv/bin/python play.py --mode random   # the untrained baseline
 ```
 
-`D` toggles a debug overlay (hitboxes + the live observation vector), `R`
-resets, `ESC` quits.
+On death, human play stops and waits -- `ENTER` starts the next run
+whenever you're ready, rather than auto-resetting into it. `D` toggles a
+debug overlay (hitboxes + the live observation vector), `R` resets anytime,
+`ESC` quits.
 
 ## Toggle features in `config.py`
 

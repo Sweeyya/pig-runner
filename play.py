@@ -5,7 +5,8 @@
     python play.py --mode random    # random policy, the untrained baseline
     python play.py --mode expert --record run.gif --episodes 1
 
-Keys: SPACE jump | D debug overlay | R reset | ESC quit
+Keys: SPACE jump | ENTER restart after dying (human mode only) | D debug
+overlay | R reset anytime | ESC quit
 """
 
 import argparse
@@ -156,6 +157,7 @@ def main():
     frames = []
     episodes = 0
     death_hold = 0
+    awaiting_restart = False
     running = True
 
     while running:
@@ -168,7 +170,9 @@ def main():
                 elif ev.key == pygame.K_d:
                     debug = not debug
                 elif ev.key == pygame.K_r:
-                    g.reset(); anim.reset(); death_hold = 0
+                    g.reset(); anim.reset(); death_hold = 0; awaiting_restart = False
+                elif ev.key == pygame.K_RETURN and awaiting_restart:
+                    g.reset(); anim.reset(); death_hold = 0; awaiting_restart = False
 
         if not g.dead:
             if args.mode == "human":
@@ -205,10 +209,23 @@ def main():
             frames.append(np.transpose(pygame.surfarray.array3d(native), (1, 0, 2)).copy())
 
         if g.dead and death_hold > int(W.FPS * 0.8):
-            episodes, stop = _end_episode(g, anim, "died", episodes, args, always_reset=False)
-            running = running and not stop
-            if not stop:
-                death_hold = 0
+            if args.mode == "human":
+                # Stop and wait -- a human deliberately checking their own
+                # run shouldn't get auto-reset into the next one before
+                # they've even seen the score; ENTER restarts on purpose.
+                if not awaiting_restart:
+                    episodes += 1
+                    print(f"episode {episodes}: score {g.score} in {g.steps} steps (died)")
+                    if bool(args.episodes) and episodes >= args.episodes:
+                        running = False
+                    else:
+                        print("press ENTER to restart")
+                        awaiting_restart = True
+            else:
+                episodes, stop = _end_episode(g, anim, "died", episodes, args, always_reset=False)
+                running = running and not stop
+                if not stop:
+                    death_hold = 0
 
         clock.tick(W.FPS)
 
