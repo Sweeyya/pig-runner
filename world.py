@@ -12,7 +12,7 @@ FPS = 50
 DT = 1.0 / FPS
 
 NATIVE_W, NATIVE_H = 640, 360
-SCALE = 2                      # window is still 1280x720
+SCALE = 3                      # window is 1920x1080
 TILE = 32
 GROUND_Y = 280                 # y of the ground surface
 
