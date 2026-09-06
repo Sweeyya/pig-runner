@@ -21,18 +21,20 @@ import config as C
 import world as W
 
 # --- Geometry ---------------------------------------------------------------
-BUSH_W, BUSH_H = 16, 12                  # tap-jump clears this
-TALL_W, TALL_H = 16, 36                  # needs a held jump (tap apex ~29 < 36 < hold apex ~47)
-SNOW_W, SNOW_H = 12, 12                  # visual size of the snowball sprite
-SNOW_LOW_BAND = (0.0, 14.0)              # grounded -- jump clears it, like a bush
-SNOW_HIGH_BAND = (10.0, 52.0)            # floating band no jump reaches -- duck required
+# Every number here is 2x the original v0/v1 tuning, matching world.py and
+# game.py's 2x scale-up -- same relative clearances, just more sprite detail.
+BUSH_W, BUSH_H = 32, 24                  # tap-jump clears this
+TALL_W, TALL_H = 32, 72                  # needs a held jump (tap apex ~34 < 72 < hold apex ~94)
+SNOW_W, SNOW_H = 24, 24                  # visual size of the snowball sprite
+SNOW_LOW_BAND = (0.0, 28.0)              # grounded -- jump clears it, like a bush
+SNOW_HIGH_BAND = (20.0, 104.0)           # floating band no jump reaches -- duck required
 
-PLATFORM_THICKNESS = 6
-PLATFORM_MARGIN = 76.0                    # generous -- covers the full above-height window even at max speed
+PLATFORM_THICKNESS = 12
+PLATFORM_MARGIN = 152.0                   # generous -- covers the full above-height window even at max speed
 
 # Hitbox insets so near-misses read as near-misses, not stolen deaths.
-BOX_INSET_X, BOX_INSET_TOP = 3, 2         # shared by every ground-standing box hazard
-SNOW_INSET = 1
+BOX_INSET_X, BOX_INSET_TOP = 6, 4         # shared by every ground-standing box hazard
+SNOW_INSET = 2
 
 
 class Hazard:

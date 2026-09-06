@@ -19,13 +19,16 @@ SPAWN_WEIGHTS = {
 }
 
 # --- Speed ramp -----------------------------------------------------------
+# px/sec values are 2x the original v0/v1 tuning, matching world.py's 2x
+# spatial scale -- RAMP_STEPS is a step count, not a distance, so it's
+# untouched and the ramp still takes the same real time.
 ENABLE_SPEED_RAMP = True
-BASE_SPEED = 200.0      # px/sec at episode start
-MAX_SPEED = 340.0       # px/sec ceiling
+BASE_SPEED = 400.0      # px/sec at episode start
+MAX_SPEED = 680.0       # px/sec ceiling
 RAMP_STEPS = 700.0      # steps to go from BASE_SPEED to MAX_SPEED
 
 # --- Platforms --------------------------------------------------------
 # A platform spans a hazard, giving an alternate route: jump onto it, run
 # across, drop back down, instead of timing a jump over the hazard itself.
 PLATFORM_CHANCE = 0.5   # fraction of eligible hazards that get one
-PLATFORM_HEIGHT = 34.0  # px above ground the platform surface sits
+PLATFORM_HEIGHT = 68.0  # px above ground the platform surface sits

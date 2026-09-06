@@ -19,12 +19,13 @@ from game import ACTION_DUCK, ACTION_JUMP, ACTION_NOOP, PigRunner
 from render import Animator, draw_hud, draw_world, _draw_debug
 
 # Empirically robust thresholds (px) for the scripted expert -- see the
-# jump-clearance tuning notes in game.py: tap apex ~29px, held apex ~47px.
-TAP_WINDOW = (16, 40)
-HOLD_WINDOW = (16, 70)
-DUCK_WINDOW = (-20, 30)  # duck has no physics carry-through like jump does --
+# jump-clearance tuning notes in game.py: tap apex ~34px, held apex ~94px.
+# 2x the original v0/v1 windows, matching world.py's 2x spatial scale.
+TAP_WINDOW = (32, 80)
+HOLD_WINDOW = (32, 140)
+DUCK_WINDOW = (-40, 60)  # duck has no physics carry-through like jump does --
                          # must stay held for the hazard's full x-overlap
-PLATFORM_JUMP_WINDOW = (30, 90)
+PLATFORM_JUMP_WINDOW = (60, 180)
 
 
 def _end_episode(g, anim, reason, episodes, args, always_reset):
@@ -59,7 +60,7 @@ def expert_action(g):
             return ACTION_DUCK
         return ACTION_NOOP
 
-    if hz.top_band > 30:  # needs a full hold
+    if hz.top_band > 60:  # needs a full hold
         if HOLD_WINDOW[0] <= d <= HOLD_WINDOW[1] and g.on_ground:
             return ACTION_JUMP
     else:

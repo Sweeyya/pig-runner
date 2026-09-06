@@ -136,19 +136,19 @@ class Animator:
 
 
 def _draw_ground(surf):
-    pygame.draw.rect(surf, GRASS_TOP, (0, W.GROUND_Y, W.NATIVE_W, 4))
-    pygame.draw.rect(surf, GRASS_EDGE, (0, W.GROUND_Y + 4, W.NATIVE_W, 2))
-    pygame.draw.rect(surf, DIRT, (0, W.GROUND_Y + 6, W.NATIVE_W, W.NATIVE_H - W.GROUND_Y - 6))
+    pygame.draw.rect(surf, GRASS_TOP, (0, W.GROUND_Y, W.NATIVE_W, 8))
+    pygame.draw.rect(surf, GRASS_EDGE, (0, W.GROUND_Y + 8, W.NATIVE_W, 4))
+    pygame.draw.rect(surf, DIRT, (0, W.GROUND_Y + 12, W.NATIVE_W, W.NATIVE_H - W.GROUND_Y - 12))
     for x in range(0, W.NATIVE_W, W.TILE):
-        pygame.draw.line(surf, DIRT_DARK, (x, W.GROUND_Y + 6), (x, W.NATIVE_H))
+        pygame.draw.line(surf, DIRT_DARK, (x, W.GROUND_Y + 12), (x, W.NATIVE_H))
 
 
 def _draw_clouds(surf, scroll):
-    for i, (cx, cy, w) in enumerate(((40, 30, 34), (150, 22, 26), (250, 38, 30))):
+    for i, (cx, cy, w) in enumerate(((80, 60, 68), (300, 44, 52), (500, 76, 60))):
         # parallax: clouds drift at a fraction of world speed
-        x = (cx - scroll * 0.25) % (W.NATIVE_W + 60) - 30
-        pygame.draw.ellipse(surf, CLOUD, (x, cy, w, 10))
-        pygame.draw.ellipse(surf, CLOUD, (x + w * 0.35, cy - 5, w * 0.6, 11))
+        x = (cx - scroll * 0.25) % (W.NATIVE_W + 120) - 60
+        pygame.draw.ellipse(surf, CLOUD, (x, cy, w, 20))
+        pygame.draw.ellipse(surf, CLOUD, (x + w * 0.35, cy - 10, w * 0.6, 22))
 
 
 def _draw_bush(surf, hz):
@@ -170,7 +170,7 @@ def _draw_tall_obstacle(surf, hz):
     block_h = hz.h / 2
     for i in range(2):
         by = y + i * block_h
-        pygame.draw.rect(surf, STONE, (x + 1, by + 1, hz.w - 2, block_h - 2))
+        pygame.draw.rect(surf, STONE, (x + 2, by + 2, hz.w - 4, block_h - 4))
 
 
 def _draw_snowball(surf, hz):
@@ -181,20 +181,20 @@ def _draw_snowball(surf, hz):
     if hz.high:
         # a floating flurry -- tall band, jump can't reach through it
         cy = y + h // 2
-        for i, r in enumerate((5, 4, 5)):
-            pygame.draw.circle(surf, SNOW_WHITE, (x + w // 2, cy - 6 + i * 6), r)
-            pygame.draw.circle(surf, SNOW_SHADE, (x + w // 2, cy - 6 + i * 6), r, 1)
+        for i, r in enumerate((10, 8, 10)):
+            pygame.draw.circle(surf, SNOW_WHITE, (x + w // 2, cy - 12 + i * 12), r)
+            pygame.draw.circle(surf, SNOW_SHADE, (x + w // 2, cy - 12 + i * 12), r, 2)
     else:
-        pygame.draw.circle(surf, SNOW_WHITE, (x + w // 2, y + h // 2), max(3, w // 2))
-        pygame.draw.circle(surf, SNOW_SHADE, (x + w // 2, y + h // 2), max(3, w // 2), 1)
+        pygame.draw.circle(surf, SNOW_WHITE, (x + w // 2, y + h // 2), max(6, w // 2))
+        pygame.draw.circle(surf, SNOW_SHADE, (x + w // 2, y + h // 2), max(6, w // 2), 2)
 
 
 def _draw_platform(surf, p):
     x = int(p.x_start)
     w = int(p.x_end - p.x_start)
     y = int(p.surface_y)
-    pygame.draw.rect(surf, PLATFORM_TOP, (x, y, w, 2))
-    pygame.draw.rect(surf, PLATFORM_SIDE, (x, y + 2, w, PLATFORM_THICKNESS - 2))
+    pygame.draw.rect(surf, PLATFORM_TOP, (x, y, w, 4))
+    pygame.draw.rect(surf, PLATFORM_SIDE, (x, y + 4, w, PLATFORM_THICKNESS - 4))
 
 
 _HAZARD_DRAW = {
@@ -249,7 +249,7 @@ def draw_world(surf, g, anim, scroll=0.0):
 def draw_hud(surf, g, font):
     """Always-on score readout -- separate from the toggleable debug overlay."""
     img = font.render(str(g.score), True, SCORE_COL)
-    surf.blit(img, (surf.get_width() - img.get_width() - 8, 6))
+    surf.blit(img, (surf.get_width() - img.get_width() - 16, 12))
 
 
 DREAM_TINT = (60, 90, 180, 90)          # translucent blue wash over the whole frame
@@ -260,7 +260,7 @@ DREAM_PLATFORM = (170, 190, 240, 130)
 DREAM_LABEL = (215, 225, 255)
 
 
-def draw_dream(surf, obs, scroll=0.0, hazard_w=16.0):
+def draw_dream(surf, obs, scroll=0.0, hazard_w=32.0):
     """Render a scene from *predicted* numbers instead of real game state --
     this is what the world model imagines, not what actually happened.
 
@@ -279,9 +279,9 @@ def draw_dream(surf, obs, scroll=0.0, hazard_w=16.0):
     if p_dist < DIST_CLIP_HI - 1e-3 and p_height > 1e-3:
         px = W.PIG_X + p_dist * OBS_DIST_SCALE
         py = W.GROUND_Y - p_height * OBS_HEIGHT_SCALE
-        deck = pygame.Surface((80, PLATFORM_THICKNESS), pygame.SRCALPHA)
+        deck = pygame.Surface((160, PLATFORM_THICKNESS), pygame.SRCALPHA)
         deck.fill(DREAM_PLATFORM)
-        surf.blit(deck, (px - 40, py))
+        surf.blit(deck, (px - 80, py))
 
     if dist < DIST_CLIP_HI - 1e-3:
         hx = W.PIG_X + dist * OBS_DIST_SCALE
