@@ -67,10 +67,12 @@ so there's always a route underneath. Jumping onto one instead skips that
 bush, but the deck itself may carry its own bush or snow golem to clear
 while riding it, so the elevated route isn't a free bypass.
 
-Baselines with everything on: random policy scores **0** and dies within the
-first few hundred steps; a scripted policy that reads each hazard's height
-correctly scores **9-11** and survives the full cap. That gap is the
-learning signal.
+Baselines with everything on, measured in cumulative reward (hazards
+cleared) rather than the on-screen counter (which ticks by seconds
+survived, not hazards -- see below): random policy scores **0** and dies
+within the first few hundred steps; a scripted policy that reads each
+hazard's height correctly scores **9-11** and survives the full cap. That
+gap is the learning signal.
 
 ## Observation
 

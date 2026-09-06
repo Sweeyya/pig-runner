@@ -131,7 +131,6 @@ def main():
     win = pygame.display.set_mode((W.NATIVE_W * scale, W.NATIVE_H * scale))
     native = pygame.Surface((W.NATIVE_W, W.NATIVE_H))
     font = pygame.font.SysFont("menlo,monaco,consolas,monospace", 14)
-    hud_font = pygame.font.SysFont("menlo,monaco,consolas,monospace", 16, bold=True)
     clock = pygame.time.Clock()
 
     g = PigRunner(args.seed)
@@ -176,7 +175,7 @@ def main():
 
         anim.update(g)
         draw_world(native, g, anim, scroll)
-        draw_hud(native, g, hud_font)
+        draw_hud(native, g)
         pygame.transform.scale(native, win.get_size(), win)
         if debug:
             _draw_debug(win, g, font, scale)

@@ -122,7 +122,6 @@ class PigRunner:
             hz.update(dx)
             if not hz.passed and hz.right < W.PIG_X:
                 hz.passed = True
-                self.score += 1
                 reward += 1.0
         for p in self.platforms:
             p.update(dx)
@@ -175,6 +174,11 @@ class PigRunner:
             self.dead = True
 
         self.steps += 1
+        # Displayed score is seconds survived, not hazards cleared -- ticks
+        # up continuously like an endless-runner distance counter, instead
+        # of sitting still between hazards. Purely a HUD number: the RL
+        # reward above is untouched, still +1 per hazard cleared.
+        self.score = self.steps // int(W.FPS)
         return reward
 
     def _active_platform(self):

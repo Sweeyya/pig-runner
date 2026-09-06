@@ -246,10 +246,49 @@ def draw_world(surf, g, anim, scroll=0.0):
     _draw_pig(surf, g, anim)
 
 
-def draw_hud(surf, g, font):
+# Blocky 3x5 digit font, drawn as solid squares rather than antialiased type
+# -- reads as an 8-bit score counter (Chrome-dino-style), matching the rest
+# of the game's chunky pixel-art look instead of a smooth system font.
+_DIGIT_ROWS = {
+    "0": ("111", "101", "101", "101", "111"),
+    "1": ("010", "110", "010", "010", "111"),
+    "2": ("111", "001", "111", "100", "111"),
+    "3": ("111", "001", "111", "001", "111"),
+    "4": ("101", "101", "111", "001", "001"),
+    "5": ("111", "100", "111", "001", "111"),
+    "6": ("111", "100", "111", "101", "111"),
+    "7": ("111", "001", "010", "010", "010"),
+    "8": ("111", "101", "111", "101", "111"),
+    "9": ("111", "101", "111", "001", "111"),
+}
+DIGIT_CELL = 6        # px per block, at native (unscaled) resolution
+DIGIT_GAP = 2 * DIGIT_CELL   # space between digits
+
+
+def _digit_width():
+    return 3 * DIGIT_CELL
+
+
+def _draw_pixel_digits(surf, text, x, y, color=SCORE_COL):
+    """Draw `text` (digits only) right there, one blocky glyph at a time."""
+    for ch in text:
+        for row, bits in enumerate(_DIGIT_ROWS[ch]):
+            for col, bit in enumerate(bits):
+                if bit == "1":
+                    surf.fill(color, (x + col * DIGIT_CELL, y + row * DIGIT_CELL, DIGIT_CELL, DIGIT_CELL))
+        x += _digit_width() + DIGIT_GAP
+    return x - DIGIT_GAP  # trailing edge, unused by callers today
+
+
+def _pixel_digits_width(text):
+    return len(text) * _digit_width() + (len(text) - 1) * DIGIT_GAP
+
+
+def draw_hud(surf, g):
     """Always-on score readout -- separate from the toggleable debug overlay."""
-    img = font.render(str(g.score), True, SCORE_COL)
-    surf.blit(img, (surf.get_width() - img.get_width() - 16, 12))
+    text = str(g.score)
+    x = surf.get_width() - _pixel_digits_width(text) - 16
+    _draw_pixel_digits(surf, text, x, 12)
 
 
 DREAM_TINT = (60, 90, 180, 90)          # translucent blue wash over the whole frame
@@ -357,4 +396,5 @@ def render_rgb(g, anim=None, scroll=0.0):
         pygame.display.set_mode((1, 1))
     surf = pygame.Surface((W.NATIVE_W, W.NATIVE_H))
     draw_world(surf, g, anim or Animator(), scroll)
+    draw_hud(surf, g)
     return np.transpose(pygame.surfarray.array3d(surf), (1, 0, 2))
