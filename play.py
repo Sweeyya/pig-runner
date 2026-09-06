@@ -166,7 +166,12 @@ def main():
                 action = rng.randint(0, G.NUM_ACTIONS - 1)
             g.step(action)
             scroll += g.speed * W.DT
-            if g.steps >= 1000:          # mirrors r2dreamer's TimeLimit
+            # The 1000-step cap mirrors r2dreamer's TimeLimit wrapper, which
+            # matters for expert/random baselines (the numbers in the README
+            # assume that bounded episode) -- but a human playing should get
+            # to keep going until they actually die, not be cut off and
+            # reset every ~20 seconds regardless of how well they're doing.
+            if g.steps >= 1000 and args.mode != "human":
                 episodes, stop = _end_episode(g, anim, "time limit", episodes, args, always_reset=True)
                 running = running and not stop
                 continue
