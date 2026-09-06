@@ -1,0 +1,14 @@
+# configs/model/pigrunner_dream.yaml
+#
+# Same architecture as size12M, but opts into the classic reconstruction
+# objective instead of r2dreamer's default decoder-free one. Only needed if
+# you want to render what the world model imagines (notebooks/train_and_watch.ipynb,
+# "Watch the world model dream" section) -- normal training doesn't need this
+# and trains faster without it.
+#
+# Usage: python train.py env=pigrunner model=pigrunner_dream
+
+defaults:
+  - size12M
+
+rep_loss: "dreamer"

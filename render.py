@@ -11,6 +11,7 @@ import numpy as np
 import pygame
 
 import world as W
+from game import DIST_CLIP_HI, OBS_DIST_SCALE, OBS_HEIGHT_SCALE
 from hazards import PLATFORM_THICKNESS
 
 ASSET_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
@@ -243,6 +244,59 @@ def draw_hud(surf, g, font):
     """Always-on score readout -- separate from the toggleable debug overlay."""
     img = font.render(str(g.score), True, SCORE_COL)
     surf.blit(img, (surf.get_width() - img.get_width() - 8, 6))
+
+
+DREAM_TINT = (60, 90, 180, 90)          # translucent blue wash over the whole frame
+DREAM_PIG  = (150, 175, 235)
+DREAM_HAZARD_LINE = (210, 225, 255)
+DREAM_HAZARD_FILL = (120, 150, 220, 110)
+DREAM_PLATFORM = (170, 190, 240, 130)
+DREAM_LABEL = (215, 225, 255)
+
+
+def draw_dream(surf, obs, scroll=0.0, hazard_w=16.0):
+    """Render a scene from *predicted* numbers instead of real game state --
+    this is what the world model imagines, not what actually happened.
+
+    obs is the 9-float vector game.py's observation() produces: the model
+    predicts exactly these fields and nothing else, so this draws only what
+    it could plausibly have predicted -- a generic hazard silhouette at the
+    right distance and height band, never a specific sprite, since "which
+    hazard is this" was never one of the numbers it predicted.
+    """
+    dist, height, _vel, _on_ground, _speed, h_bottom, h_top, p_dist, p_height = obs
+
+    surf.fill(SKY)
+    _draw_clouds(surf, scroll)
+    _draw_ground(surf)
+
+    if p_dist < DIST_CLIP_HI - 1e-3 and p_height > 1e-3:
+        px = W.PIG_X + p_dist * OBS_DIST_SCALE
+        py = W.GROUND_Y - p_height * OBS_HEIGHT_SCALE
+        deck = pygame.Surface((80, PLATFORM_THICKNESS), pygame.SRCALPHA)
+        deck.fill(DREAM_PLATFORM)
+        surf.blit(deck, (px - 40, py))
+
+    if dist < DIST_CLIP_HI - 1e-3:
+        hx = W.PIG_X + dist * OBS_DIST_SCALE
+        y_top = W.GROUND_Y - h_top * OBS_HEIGHT_SCALE
+        y_bot = W.GROUND_Y - h_bottom * OBS_HEIGHT_SCALE
+        band = pygame.Surface((hazard_w, max(2.0, y_bot - y_top)), pygame.SRCALPHA)
+        band.fill(DREAM_HAZARD_FILL)
+        surf.blit(band, (hx, y_top))
+        pygame.draw.rect(surf, DREAM_HAZARD_LINE, (hx, y_top, hazard_w, max(2.0, y_bot - y_top)), 1)
+
+    py = W.PIG_GROUND_Y - height * OBS_HEIGHT_SCALE
+    pygame.draw.rect(surf, DREAM_PIG, (W.PIG_X, py, W.PIG_W, W.PIG_H))
+
+    wash = pygame.Surface(surf.get_size(), pygame.SRCALPHA)
+    wash.fill(DREAM_TINT)
+    surf.blit(wash, (0, 0))
+
+
+def draw_dream_label(surf, font, text="DREAM"):
+    img = font.render(text, True, DREAM_LABEL)
+    surf.blit(img, (8, surf.get_height() - img.get_height() - 6))
 
 
 def _draw_debug(win, g, font, scale):

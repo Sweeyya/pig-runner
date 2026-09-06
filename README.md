@@ -138,6 +138,25 @@ rollout to a GIF and displays it inline — no terminal, no window, nothing
 local required. Recommended for anyone trying this out, not just people
 without a GPU: it's the zero-setup path.
 
+## Watch the world model dream
+
+DreamerV3 trains its policy almost entirely on trajectories it *imagines*
+inside its own learned world model, never touching the real environment for
+most of training. The same notebook has an optional section that makes this
+visible: give the model a few real steps of context, then let it roll
+forward purely on its own predictions (using the actions that were actually
+taken next), and render both feeds side by side — real game on top, decoded
+imagination on the bottom. Where they diverge is where the model's
+understanding breaks down, which says something about what it has actually
+learned, not just how well it scores.
+
+This needs its own training run: r2dreamer's default mode trains *without*
+a decoder at all (that's where its speed advantage comes from), so there is
+nothing to turn imagined states back into numbers with. `model=pigrunner_dream`
+switches on the classic reconstruction objective to make this possible,
+trading some speed for it — that's a separate, optional run, not a
+requirement for normal training.
+
 ## Not in this version, by design
 
 Mining through blocks and placing blocks to bridge gaps — the original v0
