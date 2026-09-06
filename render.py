@@ -166,8 +166,13 @@ def _draw_clouds(surf, scroll):
         pygame.draw.ellipse(surf, CLOUD, (x + w * 0.35, cy - 10, w * 0.6, 22))
 
 
+def _hazard_pos(hz):
+    """Top-left draw position for a hazard sitting on its own surface_y."""
+    return int(hz.x), int(hz.surface_y - hz.h)
+
+
 def _draw_bush(surf, hz):
-    x, y = int(hz.x), int(hz.surface_y - hz.h)
+    x, y = _hazard_pos(hz)
     if _blit_sprite(surf, "bush_00", (x, y), (hz.w, hz.h)):
         return
     pygame.draw.rect(surf, BUSH_DARK, (x, y, hz.w, hz.h))
@@ -178,7 +183,7 @@ def _draw_bush(surf, hz):
 
 
 def _draw_snow_golem(surf, hz):
-    x, y = int(hz.x), int(hz.surface_y - hz.h)
+    x, y = _hazard_pos(hz)
     if _blit_sprite(surf, "snow_golem_00", (x, y), (hz.w, hz.h)):
         return
     # two stacked snow blocks (bigger below, smaller above) plus a small
@@ -307,6 +312,19 @@ def _draw_dream_band(surf, x, y_top, y_bot, width):
     pygame.draw.rect(surf, DREAM_HAZARD_LINE, (x, y_top, width, h), 1)
 
 
+def _draw_dream_band_from(surf, hx, base_y, bottom, top, width):
+    """A hazard band measured up from its own surface (base_y) -- shared by
+    the ground lane (base_y=GROUND_Y) and the platform-deck lane (base_y=the
+    platform's own surface), since both predicted fields mean the same thing
+    relative to whatever they're standing on. No-op if there's nothing there
+    (top <= 0)."""
+    if top <= 1e-3:
+        return
+    y_top = base_y - top * OBS_HEIGHT_SCALE
+    y_bot = base_y - bottom * OBS_HEIGHT_SCALE
+    _draw_dream_band(surf, hx, y_top, y_bot, width)
+
+
 def draw_dream(surf, obs, scroll=0.0, hazard_w=64.0):
     """Render a scene from *predicted* numbers instead of real game state --
     this is what the world model imagines, not what actually happened.
@@ -331,17 +349,11 @@ def draw_dream(surf, obs, scroll=0.0, hazard_w=64.0):
         deck = pygame.Surface((320, PLATFORM_THICKNESS), pygame.SRCALPHA)
         deck.fill(DREAM_PLATFORM)
         surf.blit(deck, (px - 160, py))
-        if ph_top > 1e-3:
-            hx = px - 160 + 160
-            y_top = py - ph_top * OBS_HEIGHT_SCALE
-            y_bot = py - ph_bottom * OBS_HEIGHT_SCALE
-            _draw_dream_band(surf, hx, y_top, y_bot, hazard_w)
+        _draw_dream_band_from(surf, px, py, ph_bottom, ph_top, hazard_w)
 
     if dist < DIST_CLIP_HI - 1e-3:
         hx = W.PIG_X + dist * OBS_DIST_SCALE
-        y_top = W.GROUND_Y - h_top * OBS_HEIGHT_SCALE
-        y_bot = W.GROUND_Y - h_bottom * OBS_HEIGHT_SCALE
-        _draw_dream_band(surf, hx, y_top, y_bot, hazard_w)
+        _draw_dream_band_from(surf, hx, W.GROUND_Y, h_bottom, h_top, hazard_w)
 
     py = W.PIG_GROUND_Y - height * OBS_HEIGHT_SCALE
     pygame.draw.rect(surf, DREAM_PIG, (W.PIG_X, py, W.PIG_W, W.PIG_H))

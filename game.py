@@ -57,6 +57,15 @@ def _first_ahead(items):
     return None
 
 
+def _bands(hz):
+    """A hazard's (bottom, top) height band, normalized -- 0/0 if there's no
+    hazard at all, shared by the ground and platform-deck lanes since both
+    read the same two fields off whatever's ahead."""
+    if hz is None:
+        return 0.0, 0.0
+    return hz.bottom_band / OBS_HEIGHT_SCALE, hz.top_band / OBS_HEIGHT_SCALE
+
+
 class PigRunner:
     """The game itself. Advance it with step(action); read state off the attrs."""
 
@@ -211,12 +220,8 @@ class PigRunner:
     def observation(self):
         """The numbers the agent sees. Never pixels."""
         hz = self.next_hazard()
-        if hz is None:
-            dist, h_bottom, h_top = DIST_CLIP_HI, 0.0, 0.0
-        else:
-            dist = _dist_to(hz.x)
-            h_bottom = hz.bottom_band / OBS_HEIGHT_SCALE
-            h_top = hz.top_band / OBS_HEIGHT_SCALE
+        dist = _dist_to(hz.x) if hz is not None else DIST_CLIP_HI
+        h_bottom, h_top = _bands(hz)
 
         plat = self._next_platform()
         if plat is None:
@@ -225,12 +230,7 @@ class PigRunner:
             p_dist = _dist_to(max(plat.x_start, float(W.PIG_X)))
             p_height = plat.height / OBS_HEIGHT_SCALE
 
-        plat_hz = self.next_platform_hazard()
-        if plat_hz is None:
-            ph_bottom, ph_top = 0.0, 0.0
-        else:
-            ph_bottom = plat_hz.bottom_band / OBS_HEIGHT_SCALE
-            ph_top = plat_hz.top_band / OBS_HEIGHT_SCALE
+        ph_bottom, ph_top = _bands(self.next_platform_hazard())
 
         height = (W.PIG_GROUND_Y - self.pig_y) / OBS_HEIGHT_SCALE
         vel = -self.vy / JUMP_V
