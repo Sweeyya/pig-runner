@@ -27,6 +27,18 @@ DUCK_WINDOW = (-20, 30)  # duck has no physics carry-through like jump does --
 PLATFORM_JUMP_WINDOW = (30, 90)
 
 
+def _end_episode(g, anim, reason, episodes, args, always_reset):
+    """Log an episode's end and reset unless it's time to stop. Returns the
+    updated episode count and whether the main loop should exit."""
+    episodes += 1
+    print(f"episode {episodes}: score {g.score} in {g.steps} steps ({reason})")
+    stop = bool(args.episodes) and episodes >= args.episodes
+    if not stop or always_reset:
+        g.reset()
+        anim.reset()
+    return episodes, stop
+
+
 def expert_action(g):
     hz = g.next_hazard()
     plat = g._next_platform()
@@ -117,11 +129,8 @@ def main():
             g.step(action)
             scroll += g.speed * W.DT
             if g.steps >= 1000:          # mirrors r2dreamer's TimeLimit
-                episodes += 1
-                print(f"episode {episodes}: score {g.score} in {g.steps} steps (time limit)")
-                if args.episodes and episodes >= args.episodes:
-                    running = False
-                g.reset(); anim.reset()
+                episodes, stop = _end_episode(g, anim, "time limit", episodes, args, always_reset=True)
+                running = running and not stop
                 continue
         else:
             death_hold += 1
@@ -139,12 +148,10 @@ def main():
             frames.append(np.transpose(pygame.surfarray.array3d(native), (1, 0, 2)).copy())
 
         if g.dead and death_hold > int(W.FPS * 0.8):
-            episodes += 1
-            print(f"episode {episodes}: score {g.score} in {g.steps} steps (died)")
-            if args.episodes and episodes >= args.episodes:
-                running = False
-            else:
-                g.reset(); anim.reset(); death_hold = 0
+            episodes, stop = _end_episode(g, anim, "died", episodes, args, always_reset=False)
+            running = running and not stop
+            if not stop:
+                death_hold = 0
 
         clock.tick(W.FPS)
 

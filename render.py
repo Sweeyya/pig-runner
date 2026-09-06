@@ -71,6 +71,20 @@ def has_sprites():
     return load_sprite("pig_run_00") is not None
 
 
+def _blit_sprite(surf, names, pos):
+    """Draw the first existing assets/<name>.png at pos. `names` is a single
+    name or a fallback list tried in order. Returns whether anything drew,
+    so callers can fall back to the colored-rectangle version."""
+    if isinstance(names, str):
+        names = (names,)
+    for name in names:
+        sprite = load_sprite(name)
+        if sprite is not None:
+            surf.blit(sprite, pos)
+            return True
+    return False
+
+
 class Animator:
     """Maps game state onto (animation, frame). Drives sprites and the
     rectangle fallback alike, so motion is visible before any art exists."""
@@ -138,10 +152,8 @@ def _draw_clouds(surf, scroll):
 
 
 def _draw_bush(surf, hz):
-    sprite = load_sprite("bush_00")
     x, y = int(hz.x), W.GROUND_Y - hz.h
-    if sprite is not None:
-        surf.blit(sprite, (x, y))
+    if _blit_sprite(surf, "bush_00", (x, y)):
         return
     pygame.draw.rect(surf, BUSH_DARK, (x, y, hz.w, hz.h))
     pygame.draw.rect(surf, BUSH_GREEN, (x + 1, y + 1, hz.w - 2, hz.h - 3))
@@ -151,10 +163,8 @@ def _draw_bush(surf, hz):
 
 
 def _draw_tall_obstacle(surf, hz):
-    sprite = load_sprite("tall_obstacle_00")
     x, y = int(hz.x), W.GROUND_Y - hz.h
-    if sprite is not None:
-        surf.blit(sprite, (x, y))
+    if _blit_sprite(surf, "tall_obstacle_00", (x, y)):
         return
     pygame.draw.rect(surf, STONE_DARK, (x, y, hz.w, hz.h))
     block_h = hz.h / 2
@@ -164,11 +174,9 @@ def _draw_tall_obstacle(surf, hz):
 
 
 def _draw_snowball(surf, hz):
-    sprite = load_sprite("snowball_high_00" if hz.high else "snowball_low_00")
     x, y, w, h = hz.hitbox
     x, y, w, h = int(x), int(y), int(w), int(h)
-    if sprite is not None:
-        surf.blit(sprite, (x, y))
+    if _blit_sprite(surf, "snowball_high_00" if hz.high else "snowball_low_00", (x, y)):
         return
     if hz.high:
         # a floating flurry -- tall band, jump can't reach through it
@@ -197,11 +205,9 @@ _HAZARD_DRAW = {
 
 
 def _draw_pig(surf, g, anim):
-    name = f"pig_{anim.anim}_{anim.frame:02d}"
-    sprite = load_sprite(name) or load_sprite("pig_run_00")
     x, y = W.PIG_X, int(g.pig_y)
-    if sprite is not None:
-        surf.blit(sprite, (x, y))
+    name = f"pig_{anim.anim}_{anim.frame:02d}"
+    if _blit_sprite(surf, (name, "pig_run_00"), (x, y)):
         return
 
     if g.ducking:

@@ -42,6 +42,18 @@ def _clip(v):
     return max(DIST_CLIP_LO, min(DIST_CLIP_HI, v))
 
 
+def _dist_to(x):
+    return _clip((x - W.PIG_X) / OBS_DIST_SCALE)
+
+
+def _first_ahead(items):
+    """First item in a scroll-ordered list that hasn't fully passed the pig."""
+    for item in items:
+        if item.right >= W.PIG_X:
+            return item
+    return None
+
+
 class PigRunner:
     """The game itself. Advance it with step(action); read state off the attrs."""
 
@@ -159,16 +171,10 @@ class PigRunner:
 
     # -- observation --------------------------------------------------------
     def next_hazard(self):
-        for hz in self.hazards:
-            if hz.right >= W.PIG_X:
-                return hz
-        return None
+        return _first_ahead(self.hazards)
 
     def _next_platform(self):
-        for p in self.platforms:
-            if p.right >= W.PIG_X:
-                return p
-        return None
+        return _first_ahead(self.platforms)
 
     def observation(self):
         """The numbers the agent sees. Never pixels."""
@@ -176,7 +182,7 @@ class PigRunner:
         if hz is None:
             dist, h_bottom, h_top = DIST_CLIP_HI, 0.0, 0.0
         else:
-            dist = _clip((hz.x - W.PIG_X) / OBS_DIST_SCALE)
+            dist = _dist_to(hz.x)
             h_bottom = hz.bottom_band / OBS_HEIGHT_SCALE
             h_top = hz.top_band / OBS_HEIGHT_SCALE
 
@@ -184,8 +190,7 @@ class PigRunner:
         if plat is None:
             p_dist, p_height = DIST_CLIP_HI, 0.0
         else:
-            anchor = max(plat.x_start, float(W.PIG_X))
-            p_dist = _clip((anchor - W.PIG_X) / OBS_DIST_SCALE)
+            p_dist = _dist_to(max(plat.x_start, float(W.PIG_X)))
             p_height = plat.height / OBS_HEIGHT_SCALE
 
         height = (W.PIG_GROUND_Y - self.pig_y) / OBS_HEIGHT_SCALE
@@ -206,17 +211,12 @@ class PigRunner:
     @property
     def pig_hitbox(self):
         if self.ducking:
-            top = self.pig_y + (W.PIG_H - W.DUCK_H)
-            bottom = self.pig_y + W.PIG_H
-            return (
-                W.PIG_X + PIG_INSET,
-                top + PIG_INSET,
-                W.PIG_W - 2 * PIG_INSET,
-                (bottom - top) - 2 * PIG_INSET,
-            )
+            top, h = self.pig_y + (W.PIG_H - W.DUCK_H), W.DUCK_H
+        else:
+            top, h = self.pig_y, W.PIG_H
         return (
             W.PIG_X + PIG_INSET,
-            self.pig_y + PIG_INSET,
+            top + PIG_INSET,
             W.PIG_W - 2 * PIG_INSET,
-            W.PIG_H - 2 * PIG_INSET,
+            h - 2 * PIG_INSET,
         )

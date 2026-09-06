@@ -31,13 +31,13 @@ PLATFORM_THICKNESS = 6
 PLATFORM_MARGIN = 76.0                    # generous -- covers the full above-height window even at max speed
 
 # Hitbox insets so near-misses read as near-misses, not stolen deaths.
-BUSH_INSET_X, BUSH_INSET_TOP = 3, 2
-TALL_INSET_X, TALL_INSET_TOP = 3, 2
+BOX_INSET_X, BOX_INSET_TOP = 3, 2         # shared by every ground-standing box hazard
 SNOW_INSET = 1
 
 
 class Hazard:
     kind = "hazard"
+    inset_x, inset_top = 0, 0
 
     def __init__(self, x):
         self.x = x
@@ -50,35 +50,30 @@ class Hazard:
     def right(self):
         return self.x + self.w
 
+    @property
+    def hitbox(self):
+        """Default shape for a box sitting on the ground, inset from the art.
+        Snowball overrides this -- its box floats at a band instead."""
+        return (
+            self.x + self.inset_x,
+            W.GROUND_Y - self.h + self.inset_top,
+            self.w - 2 * self.inset_x,
+            self.h - self.inset_top,
+        )
+
 
 class Bush(Hazard):
     kind = "bush"
     w, h = BUSH_W, BUSH_H
+    inset_x, inset_top = BOX_INSET_X, BOX_INSET_TOP
     bottom_band, top_band = 0.0, float(BUSH_H)
-
-    @property
-    def hitbox(self):
-        return (
-            self.x + BUSH_INSET_X,
-            W.GROUND_Y - self.h + BUSH_INSET_TOP,
-            self.w - 2 * BUSH_INSET_X,
-            self.h - BUSH_INSET_TOP,
-        )
 
 
 class TallObstacle(Hazard):
     kind = "tall_obstacle"
     w, h = TALL_W, TALL_H
+    inset_x, inset_top = BOX_INSET_X, BOX_INSET_TOP
     bottom_band, top_band = 0.0, float(TALL_H)
-
-    @property
-    def hitbox(self):
-        return (
-            self.x + TALL_INSET_X,
-            W.GROUND_Y - self.h + TALL_INSET_TOP,
-            self.w - 2 * TALL_INSET_X,
-            self.h - TALL_INSET_TOP,
-        )
 
 
 class Snowball(Hazard):
