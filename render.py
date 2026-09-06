@@ -337,6 +337,11 @@ def render_rgb(g, anim=None, scroll=0.0):
     os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
     if not pygame.get_init():
         pygame.init()
+    if pygame.display.get_surface() is None:
+        # convert_alpha() (used when loading sprites) needs a display mode
+        # to exist, even a 1x1 dummy one -- otherwise it raises once any
+        # sprite file actually exists to be loaded.
+        pygame.display.set_mode((1, 1))
     surf = pygame.Surface((W.NATIVE_W, W.NATIVE_H))
     draw_world(surf, g, anim or Animator(), scroll)
     return np.transpose(pygame.surfarray.array3d(surf), (1, 0, 2))
