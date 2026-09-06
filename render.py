@@ -154,11 +154,11 @@ class Animator:
 
 
 def _draw_ground(surf):
-    pygame.draw.rect(surf, GRASS_TOP, (0, W.GROUND_Y, W.NATIVE_W, 8))
-    pygame.draw.rect(surf, GRASS_EDGE, (0, W.GROUND_Y + 8, W.NATIVE_W, 4))
-    pygame.draw.rect(surf, DIRT, (0, W.GROUND_Y + 12, W.NATIVE_W, W.NATIVE_H - W.GROUND_Y - 12))
+    pygame.draw.rect(surf, GRASS_TOP, (0, W.GROUND_Y, W.NATIVE_W, 16))
+    pygame.draw.rect(surf, GRASS_EDGE, (0, W.GROUND_Y + 16, W.NATIVE_W, 8))
+    pygame.draw.rect(surf, DIRT, (0, W.GROUND_Y + 24, W.NATIVE_W, W.NATIVE_H - W.GROUND_Y - 24))
     for x in range(0, W.NATIVE_W, W.TILE):
-        pygame.draw.line(surf, DIRT_DARK, (x, W.GROUND_Y + 12), (x, W.NATIVE_H))
+        pygame.draw.line(surf, DIRT_DARK, (x, W.GROUND_Y + 24), (x, W.NATIVE_H))
 
 
 def _draw_clouds(surf, scroll):
@@ -188,7 +188,7 @@ def _draw_tall_obstacle(surf, hz):
     block_h = hz.h / 2
     for i in range(2):
         by = y + i * block_h
-        pygame.draw.rect(surf, STONE, (x + 2, by + 2, hz.w - 4, block_h - 4))
+        pygame.draw.rect(surf, STONE, (x + 4, by + 4, hz.w - 8, block_h - 8))
 
 
 def _draw_snowball(surf, hz):
@@ -199,20 +199,20 @@ def _draw_snowball(surf, hz):
     if hz.high:
         # a floating flurry -- tall band, jump can't reach through it
         cy = y + h // 2
-        for i, r in enumerate((10, 8, 10)):
-            pygame.draw.circle(surf, SNOW_WHITE, (x + w // 2, cy - 12 + i * 12), r)
-            pygame.draw.circle(surf, SNOW_SHADE, (x + w // 2, cy - 12 + i * 12), r, 2)
+        for i, r in enumerate((20, 16, 20)):
+            pygame.draw.circle(surf, SNOW_WHITE, (x + w // 2, cy - 24 + i * 24), r)
+            pygame.draw.circle(surf, SNOW_SHADE, (x + w // 2, cy - 24 + i * 24), r, 4)
     else:
-        pygame.draw.circle(surf, SNOW_WHITE, (x + w // 2, y + h // 2), max(6, w // 2))
-        pygame.draw.circle(surf, SNOW_SHADE, (x + w // 2, y + h // 2), max(6, w // 2), 2)
+        pygame.draw.circle(surf, SNOW_WHITE, (x + w // 2, y + h // 2), max(12, w // 2))
+        pygame.draw.circle(surf, SNOW_SHADE, (x + w // 2, y + h // 2), max(12, w // 2), 4)
 
 
 def _draw_platform(surf, p):
     x = int(p.x_start)
     w = int(p.x_end - p.x_start)
     y = int(p.surface_y)
-    pygame.draw.rect(surf, PLATFORM_TOP, (x, y, w, 4))
-    pygame.draw.rect(surf, PLATFORM_SIDE, (x, y + 4, w, PLATFORM_THICKNESS - 4))
+    pygame.draw.rect(surf, PLATFORM_TOP, (x, y, w, 8))
+    pygame.draw.rect(surf, PLATFORM_SIDE, (x, y + 8, w, PLATFORM_THICKNESS - 8))
 
 
 _HAZARD_DRAW = {
@@ -284,7 +284,7 @@ DREAM_PLATFORM = (170, 190, 240, 130)
 DREAM_LABEL = (215, 225, 255)
 
 
-def draw_dream(surf, obs, scroll=0.0, hazard_w=32.0):
+def draw_dream(surf, obs, scroll=0.0, hazard_w=64.0):
     """Render a scene from *predicted* numbers instead of real game state --
     this is what the world model imagines, not what actually happened.
 
@@ -303,9 +303,9 @@ def draw_dream(surf, obs, scroll=0.0, hazard_w=32.0):
     if p_dist < DIST_CLIP_HI - 1e-3 and p_height > 1e-3:
         px = W.PIG_X + p_dist * OBS_DIST_SCALE
         py = W.GROUND_Y - p_height * OBS_HEIGHT_SCALE
-        deck = pygame.Surface((160, PLATFORM_THICKNESS), pygame.SRCALPHA)
+        deck = pygame.Surface((320, PLATFORM_THICKNESS), pygame.SRCALPHA)
         deck.fill(DREAM_PLATFORM)
-        surf.blit(deck, (px - 80, py))
+        surf.blit(deck, (px - 160, py))
 
     if dist < DIST_CLIP_HI - 1e-3:
         hx = W.PIG_X + dist * OBS_DIST_SCALE

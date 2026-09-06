@@ -21,20 +21,33 @@ import config as C
 import world as W
 
 # --- Geometry ---------------------------------------------------------------
-# Every number here is 2x the original v0/v1 tuning, matching world.py and
-# game.py's 2x scale-up -- same relative clearances, just more sprite detail.
-BUSH_W, BUSH_H = 32, 24                  # tap-jump clears this
-TALL_W, TALL_H = 32, 72                  # needs a held jump (tap apex ~34 < 72 < hold apex ~94)
-SNOW_W, SNOW_H = 24, 24                  # visual size of the snowball sprite
-SNOW_LOW_BAND = (0.0, 28.0)              # grounded -- jump clears it, like a bush
-SNOW_HIGH_BAND = (20.0, 104.0)           # floating band no jump reaches -- duck required
+# Every number here is 4x the original v0/v1 tuning, matching world.py and
+# game.py's 4x scale-up -- same relative clearances, just more sprite detail.
+BUSH_W, BUSH_H = 64, 48                  # tap-jump clears this
+TALL_W, TALL_H = 32, 88                   # needs a held jump (tap apex ~67 < 88 < hold apex ~188).
+                                           # Not simply 4x the original -- combined pig+obstacle
+                                           # width now takes real time to cross at PIG_W=64, and
+                                           # that time has to fit inside the fixed (scale-invariant)
+                                           # duration a jump can spend above a given height. A wider,
+                                           # taller obstacle here becomes mathematically uncrossable
+                                           # at BASE_SPEED; verified empirically across the full
+                                           # speed range instead of assumed from the scale factor.
+SNOW_W, SNOW_H = 48, 48                  # visual size of the snowball sprite
+SNOW_LOW_BAND = (0.0, 56.0)              # grounded -- jump clears it, like a bush
+SNOW_HIGH_BAND = (40.0, 208.0)           # floating band no jump reaches -- duck required
 
-PLATFORM_THICKNESS = 12
-PLATFORM_MARGIN = 152.0                   # generous -- covers the full above-height window even at max speed
+PLATFORM_THICKNESS = 24
+# NOT scaled with everything else on purpose: how wide a platform needs to be
+# depends on (time spent above PLATFORM_HEIGHT during a jump) x (speed), and
+# neither of those changed in this pass -- jump timing is scale-invariant by
+# construction, and speed is a separate, unscaled pace knob. Blindly 4x-ing
+# this (like every other geometry constant) made the platform ~670px wide,
+# which ate most of the gap to the next hazard and caused real deaths.
+PLATFORM_MARGIN = 80.0                    # covers the ~143px above-height scroll at MAX_SPEED, with margin
 
 # Hitbox insets so near-misses read as near-misses, not stolen deaths.
-BOX_INSET_X, BOX_INSET_TOP = 6, 4         # shared by every ground-standing box hazard
-SNOW_INSET = 2
+BOX_INSET_X, BOX_INSET_TOP = 12, 8        # shared by every ground-standing box hazard
+SNOW_INSET = 4
 
 
 class Hazard:
@@ -129,18 +142,23 @@ _TYPES = {
 }
 
 
-def _enabled_weights():
+def _enabled_weights(platform_active):
     weights = {"bush": C.SPAWN_WEIGHTS.get("bush", 1)}
     if C.ENABLE_TALL_OBSTACLE:
         weights["tall_obstacle"] = C.SPAWN_WEIGHTS.get("tall_obstacle", 1)
-    if C.ENABLE_SNOW_GOLEM:
+    # A high snow_golem shot occupies a height band that necessarily overlaps
+    # PLATFORM_HEIGHT (bush-clearance and jump-apex constraints leave no gap
+    # for it not to) -- a pig resting on a platform has no action that avoids
+    # one, jump or duck. Simplest correct fix: never spawn a snow_golem while
+    # a platform is still in play, rather than trying to time-share the sky.
+    if C.ENABLE_SNOW_GOLEM and not platform_active:
         weights["snow_golem"] = C.SPAWN_WEIGHTS.get("snow_golem", 1)
     return weights
 
 
-def spawn_next(x, rng):
+def spawn_next(x, rng, platform_active=False):
     """Return (hazard, platform_or_None) for the next spawn point."""
-    weights = _enabled_weights()
+    weights = _enabled_weights(platform_active)
     kinds = list(weights)
     picks = [weights[k] for k in kinds]
     kind = rng.choices(kinds, weights=picks, k=1)[0]

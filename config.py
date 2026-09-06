@@ -30,10 +30,11 @@ RAMP_STEPS = 700.0      # steps to go from BASE_SPEED to MAX_SPEED
 # --- Platforms --------------------------------------------------------
 # A platform spans a hazard, giving an alternate route: jump onto it, run
 # across, drop back down, instead of timing a jump over the hazard itself.
-# Height is well below the hold-jump apex (~94px) on purpose -- a human
+# Height is well below the hold-jump apex (~188px) on purpose -- a human
 # doesn't time a jump as precisely as a script, so landing on top should
-# only need "a decent jump", not "an exactly-held max-height jump". 60 is
+# only need "a decent jump", not "an exactly-held max-height jump". 96 is
 # also the floor for a different reason: any lower and a pig resting on
-# the deck vertically overlaps the bush hitbox underneath it.
+# the deck vertically overlaps the bush hitbox underneath it -- 120 keeps
+# a 24px margin above that floor.
 PLATFORM_CHANCE = 0.5   # fraction of eligible hazards that get one
-PLATFORM_HEIGHT = 60.0  # px above ground the platform surface sits
+PLATFORM_HEIGHT = 120.0  # px above ground the platform surface sits

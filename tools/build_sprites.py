@@ -97,20 +97,20 @@ def main():
     run = trim(load_gif_frame(f"{SRC}/Piggy-run.gif", 1))
     bush = trim(load_rgba(f"{SRC}/bush.png"))
 
-    save(place(bush, 128, 96), "bush_00")
+    save(place(bush, 256, 192), "bush_00")
 
     # Run cycle: alternate the two drawn poses, exaggerating each with
     # squash/stretch so the pair reads as a bounce, not just two stills.
-    save(place(still, 128, 128, 1.00, 1.00), "pig_run_00")   # neutral / passing
-    save(place(run, 128, 128, 0.90, 1.15), "pig_run_01")     # stretched -- up
-    save(place(still, 128, 128, 1.00, 1.00), "pig_run_02")   # neutral / passing
-    save(place(run, 128, 128, 1.12, 0.88), "pig_run_03")     # squashed -- down
+    save(place(still, 256, 256, 1.00, 1.00), "pig_run_00")   # neutral / passing
+    save(place(run, 256, 256, 0.90, 1.15), "pig_run_01")     # stretched -- up
+    save(place(still, 256, 256, 1.00, 1.00), "pig_run_02")   # neutral / passing
+    save(place(run, 256, 256, 1.12, 0.88), "pig_run_03")     # squashed -- down
 
-    save(place(still, 128, 128, 0.88, 1.22), "pig_rise_00")  # stretched tall
-    save(place(run, 128, 128, 1.05, 0.95), "pig_fall_00")    # slight squash, trailing legs
-    save(place(still, 128, 128, 1.30, 0.75), "pig_land_00")  # dramatic squash
+    save(place(still, 256, 256, 0.88, 1.22), "pig_rise_00")  # stretched tall
+    save(place(run, 256, 256, 1.05, 0.95), "pig_fall_00")    # slight squash, trailing legs
+    save(place(still, 256, 256, 1.30, 0.75), "pig_land_00")  # dramatic squash
 
-    duck = place(still, 128, 64, 1.15, 1.0)
+    duck = place(still, 256, 128, 1.15, 1.0)
     save(duck, "pig_duck_00")
 
     # Death: same base pose, increasingly red and increasingly faded/squashed
@@ -122,7 +122,7 @@ def main():
         (1.00, 1.00, 0.70, 0.65),
     ]
     for i, (redness, alpha_factor, sx, sy) in enumerate(steps):
-        frame = place(still, 128, 128, sx, sy)
+        frame = place(still, 256, 256, sx, sy)
         tint_toward(frame, (225, 25, 25), redness)
         fade(frame, alpha_factor)
         save(frame, f"pig_death_{i:02d}")

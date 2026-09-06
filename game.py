@@ -15,8 +15,8 @@ import world as W
 DT = W.DT
 
 # --- Motion -----------------------------------------------------------------
-GRAVITY = 1800.0               # px/sec^2 -- 2x game.py's original 900, matching world.py's 2x scale
-JUMP_V = 600.0                 # px/sec -- 2x original 300, same reasoning
+GRAVITY = 3600.0               # px/sec^2 -- 4x game.py's original 900, matching world.py's 4x scale
+JUMP_V = 1200.0                # px/sec -- 4x original 300, same reasoning
 JUMP_CUT = 0.8                 # releasing while rising scales vy (dimensionless -- unchanged)
 
 # --- Hazard spacing, expressed in time so it stays fair as speed ramps -----
@@ -28,11 +28,11 @@ MIN_GAP_SEC, MAX_GAP_SEC = 1.4, 2.0
 
 # --- Hitbox insets (collision box is smaller than the art, so near misses read
 # as near misses instead of feeling stolen) ----------------------------------
-PIG_INSET = 4
+PIG_INSET = 8
 
 # --- Observation normalisation ---------------------------------------------
 OBS_DIST_SCALE = float(W.NATIVE_W)
-OBS_HEIGHT_SCALE = 128.0
+OBS_HEIGHT_SCALE = 256.0
 DIST_CLIP_LO, DIST_CLIP_HI = -0.5, 1.5
 
 ACTION_NOOP = 0
@@ -130,7 +130,7 @@ class PigRunner:
         self.platforms = [p for p in self.platforms if p.right >= 0.0]
 
         if not self.hazards or (W.SPAWN_X - self.hazards[-1].x) >= self._next_gap_px:
-            hz, plat = H.spawn_next(float(W.SPAWN_X), self._rng)
+            hz, plat = H.spawn_next(float(W.SPAWN_X), self._rng, platform_active=bool(self.platforms))
             self.hazards.append(hz)
             if plat is not None:
                 self.platforms.append(plat)

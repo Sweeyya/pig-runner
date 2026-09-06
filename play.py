@@ -28,9 +28,14 @@ from render import Animator, draw_hud, draw_world, _draw_debug
 # points across the BASE_SPEED..MAX_SPEED range (200/250/300/340) and only
 # kept if they worked at all four, so they're robust across the whole ramp,
 # not just validated at one speed and assumed to generalize.
-TAP_WINDOW = (0.16, 0.30)
-HOLD_WINDOW = (0.16, 0.28)   # narrower than TAP -- a held jump needs near-full
-                             # commitment, so there's less slack in when to start
+TAP_WINDOW = (0.05, 0.30)   # lower bound has margin beyond the bare minimum --
+                            # a platform dismount is a real ~13-step fall, and
+                            # a tight window can close one frame before landing
+HOLD_WINDOW = (0.30, 0.50)   # later than TAP, not just narrower -- at the
+                             # current pig/obstacle width, a held jump's
+                             # window doesn't open until later relative to
+                             # arrival than it used to; re-swept from scratch
+                             # rather than assumed to shift by a fixed amount
 DUCK_WINDOW = (-0.20, 0.30)  # duck has no physics carry-through like jump does
                              # -- must stay held for the hazard's full x-overlap
 PLATFORM_JUMP_WINDOW = (0.20, 0.55)
@@ -52,20 +57,27 @@ def expert_action(g):
     hz = g.next_hazard()
     plat = g._next_platform()
 
-    # A duck call is the most urgent: it's the only response to a floating
-    # hazard, and jumping onto a platform instead (a leftover trigger from
-    # an earlier bush that hasn't scrolled off yet) would jump straight
-    # into it. Check the imminent hazard before ever considering a platform.
+    # A floating hazard blocks any platform-jump consideration entirely, not
+    # just while it's within its own tight duck-trigger window: PLATFORM_MARGIN
+    # is wide enough that a *later* bush's platform can already be a valid
+    # jump target while an earlier, unrelated floating hazard still needs to
+    # be ducked -- jumping toward that platform would leave the pig airborne
+    # (unable to duck) exactly when it needs to. If a floating hazard is
+    # closer than the platform, deal with that first, full stop.
+    floating_hazard_first = (
+        hz is not None and hz.bottom_band > 0 and plat is not None and hz.x < plat.x_start
+    )
     imminent_duck = (
         hz is not None and hz.bottom_band > 0
         and DUCK_WINDOW[0] <= (hz.x - W.PIG_X) / g.speed <= DUCK_WINDOW[1]
     )
+    suppress_platform = imminent_duck or floating_hazard_first
 
-    if not imminent_duck and plat is not None and plat.x_start > W.PIG_X and g.on_ground:
+    if not suppress_platform and plat is not None and plat.x_start > W.PIG_X and g.on_ground:
         t = (plat.x_start - W.PIG_X) / g.speed
         if PLATFORM_JUMP_WINDOW[0] <= t <= PLATFORM_JUMP_WINDOW[1]:
             return ACTION_JUMP
-    if not imminent_duck and plat is not None and plat.covers(W.PIG_X) and not g.on_ground:
+    if not suppress_platform and plat is not None and plat.covers(W.PIG_X) and not g.on_ground:
         return ACTION_JUMP  # keep rising onto the deck
 
     if hz is None:
