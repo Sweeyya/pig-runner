@@ -11,7 +11,7 @@ the interface is plain Gym-shaped enough to point any algorithm at it.
 Not affiliated with or endorsed by Mojang — inspired by Minecraft, built with
 entirely original art and code.
 
-[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](notebooks/train_and_watch.ipynb)
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Sweeyya/pig-runner/blob/main/notebooks/train_and_watch.ipynb)
 
 ## Why this exists
 
