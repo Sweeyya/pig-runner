@@ -119,7 +119,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--mode", choices=("human", "expert", "random"), default="human")
     ap.add_argument("--seed", type=int, default=0)
-    ap.add_argument("--scale", type=int, default=W.SCALE)
+    ap.add_argument("--scale", type=int, default=None, help="window scale (default: auto-fit to your screen)")
     ap.add_argument("--debug", action="store_true", help="start with the overlay on")
     ap.add_argument("--record", metavar="OUT.gif", help="also write the run to a gif")
     ap.add_argument("--episodes", type=int, default=0, help="stop after N deaths (0 = forever)")
@@ -128,6 +128,19 @@ def main():
     pygame.init()
     pygame.display.set_caption("Pig Runner v1")
     scale = args.scale
+    if scale is None:
+        # W.SCALE (3x, a 1920x1080 window) assumes a large monitor -- on a
+        # smaller screen the window doesn't fit, and content pinned to a
+        # corner (the score) can end up off-screen or under the menu bar/
+        # dock without any visible error. Auto-fit to whatever's actually
+        # there instead, leaving room for window chrome and system bars.
+        try:
+            desktop_w, desktop_h = pygame.display.get_desktop_sizes()[0]
+        except Exception:
+            desktop_w, desktop_h = W.NATIVE_W * W.SCALE, W.NATIVE_H * W.SCALE
+        fit_w = int(desktop_w * 0.9) // W.NATIVE_W
+        fit_h = int(desktop_h * 0.85) // W.NATIVE_H
+        scale = max(1, min(W.SCALE, fit_w, fit_h))
     win = pygame.display.set_mode((W.NATIVE_W * scale, W.NATIVE_H * scale))
     native = pygame.Surface((W.NATIVE_W, W.NATIVE_H))
     font = pygame.font.SysFont("menlo,monaco,consolas,monospace", 14)
