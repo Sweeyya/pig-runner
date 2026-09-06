@@ -29,7 +29,7 @@ type label, so the agent has to read the situation, not memorize a pattern.
 git clone <this repo>
 cd pig-runner
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
-.venv/bin/python play.py                 # SPACE jump (hold for height)
+.venv/bin/python play.py                 # SPACE jump
 .venv/bin/python play.py --mode expert   # what "solved" looks like
 .venv/bin/python play.py --mode random   # the untrained baseline
 ```
@@ -43,7 +43,7 @@ Every hazard is a flag. Flip one, run `play.py`, get a different game — no
 other code changes needed:
 
 ```python
-ENABLE_SNOW_GOLEM = True   # needs a held jump, not a tap
+ENABLE_SNOW_GOLEM = True   # needs the jump's peak actually over it -- tighter timing than a bush
 ENABLE_PLATFORMS  = True   # alternate route over a bush -- with its own hazards on deck
 ENABLE_SPEED_RAMP = True   # pace picks up over the episode
 ```
@@ -55,8 +55,8 @@ hazard (the bush), two actions, fixed speed.
 
 | | |
 |---|---|
-| Actions | `0` nothing, `1` jump (hold for height) |
-| Hazards | bush (tap-jump), snow golem (held jump) — either can appear on the ground or on a platform's deck |
+| Actions | `0` nothing, `1` jump |
+| Hazards | bush (easy timing), snow golem (tighter timing -- the jump's peak has to land on it) — either can appear on the ground or on a platform's deck |
 | Observation | 11 floats, **never pixels** — see below |
 | Reward | +1 per hazard cleared, 0 otherwise, 0 on death |
 | Episode ends | on death; capped at 1000 steps (~20s at 50 steps/s) |
@@ -83,7 +83,7 @@ gap is the learning signal.
 | 2 | vertical velocity | positive is up |
 | 3 | on ground | 0 or 1 (true whether on real ground or a platform's deck) |
 | 4 | current speed | normalized 0 (start) to 1 (ramp cap) — without this, "distance" alone would mean a different amount of reaction time depending on speed |
-| 5, 6 | next ground hazard's bottom/top band | the height range it occupies above ground — this is what makes tap-vs-hold a numeric decision, not a hidden type label |
+| 5, 6 | next ground hazard's bottom/top band | the height range it occupies above ground — not a type label, so the agent reads geometry rather than memorizing a category |
 | 7, 8 | next platform's distance/height | clipped far/0 if none is coming |
 | 9, 10 | next platform-deck hazard's bottom/top band | same idea as 5/6, but for whatever's waiting on the platform itself — 0/0 if the platform (or no platform) carries none |
 
@@ -92,8 +92,14 @@ both can matter to the agent at once (which one to jump for depends on
 whether it's currently riding a platform or not), so collapsing them into
 one shared field would hide information rather than simplify it.
 
-Jumping is variable-height: press to launch, hold to keep rising, release to
-cut the arc short.
+Jump is a single fixed-height arc, Chrome-Dino style: press while grounded
+and it launches the full jump; holding or releasing afterward does nothing.
+A shorter, held-for-less jump was tried and dropped -- the bush is wide
+enough that reliably clearing it needs an arc that stays up almost as long
+as the full jump anyway, so there's no real lower height worth holding for.
+Hazards are told apart by *when* you have to press (a bush forgives a wide
+window; a snow golem needs the jump's peak actually over it, a tighter
+window), not by how the button is pressed.
 
 ## Files
 

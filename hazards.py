@@ -33,8 +33,9 @@ import world as W
 # --- Geometry ---------------------------------------------------------------
 # Every number here is 4x the original v0/v1 tuning, matching world.py and
 # game.py's 4x scale-up -- same relative clearances, just more sprite detail.
-BUSH_W, BUSH_H = 64, 48                  # tap-jump clears this
-TALL_W, TALL_H = 32, 88                   # needs a held jump (tap apex ~67 < 88 < hold apex ~188).
+BUSH_W, BUSH_H = 64, 48                  # the fixed jump clears this with room to spare
+TALL_W, TALL_H = 32, 88                   # needs the jump's peak (~188) actually over it, so
+                                           # timing is tighter than the bush's -- not a taller jump.
                                            # Not simply 4x the original -- combined pig+obstacle
                                            # width now takes real time to cross at PIG_W=64, and
                                            # that time has to fit inside the fixed (scale-invariant)

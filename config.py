@@ -29,12 +29,12 @@ RAMP_STEPS = 700.0      # steps to go from BASE_SPEED to MAX_SPEED
 # --- Platforms --------------------------------------------------------
 # A platform spans a ground-level bush, giving an alternate route: jump onto
 # it, run across, drop back down, instead of timing a jump over the bush.
-# Only ever pairs with a bush, not a snow_golem -- a snow_golem needs a held
-# jump tall enough that it would also hit the deck's own underside.
+# Only ever pairs with a bush, not a snow_golem -- a snow_golem needs the
+# jump's peak height, which would also hit the deck's own underside.
 #
-# Height is well below the hold-jump apex (~188px) on purpose -- a human
+# Height is well below the jump's peak (~188px) on purpose -- a human
 # doesn't time a jump as precisely as a script, so landing on top should
-# only need "a decent jump", not "an exactly-held max-height jump". 96 is
+# only need "roughly the right moment", not split-second precision. 96 is
 # also the floor for a different reason: any lower and a pig resting on
 # the deck vertically overlaps the bush hitbox underneath it -- 120 keeps
 # a 24px margin above that floor.

@@ -1,11 +1,11 @@
 """Watch or play the game.
 
-    python play.py                  # play it yourself: SPACE to jump (hold for height)
+    python play.py                  # play it yourself: SPACE to jump
     python play.py --mode expert    # scripted policy, a reference for "solved"
     python play.py --mode random    # random policy, the untrained baseline
     python play.py --mode expert --record run.gif --episodes 1
 
-Keys: SPACE jump (hold for height) | D debug overlay | R reset | ESC quit
+Keys: SPACE jump | D debug overlay | R reset | ESC quit
 """
 
 import argparse
@@ -18,26 +18,30 @@ import world as W
 from game import ACTION_JUMP, ACTION_NOOP, PigRunner
 from render import Animator, draw_hud, draw_world, _draw_debug
 
-# Windows are in *seconds*, not pixels -- distance / current speed. Speed
-# ramps up over an episode, so a fixed-pixel window quietly loses reaction
-# time as the game speeds up. A pure "divide the old pixel window by current
-# speed" conversion isn't quite enough either: hazard *width* is fixed in
-# pixels, so how much time a hazard spends overlapping the pig shrinks as
-# speed rises, while the jump's own arc duration doesn't change at all --
-# the two don't scale together. These windows were swept directly at four
-# points across the BASE_SPEED..MAX_SPEED range (200/250/300/340) and only
-# kept if they worked at all four, so they're robust across the whole ramp,
-# not just validated at one speed and assumed to generalize. Reused as-is
-# for a hazard on a platform's deck too -- x-distance and height are all
-# that matter to the timing, the elevation doesn't change any of it.
-TAP_WINDOW = (0.05, 0.30)   # lower bound has margin beyond the bare minimum --
-                            # a platform dismount is a real ~13-step fall, and
-                            # a tight window can close one frame before landing
-HOLD_WINDOW = (0.30, 0.50)   # later than TAP, not just narrower -- at the
-                             # current pig/obstacle width, a held jump's
-                             # window doesn't open until later relative to
-                             # arrival than it used to; re-swept from scratch
-                             # rather than assumed to shift by a fixed amount
+# Jump is a single fixed-height arc (Chrome-Dino style) -- holding or
+# releasing after the press does nothing, so hazards are told apart purely
+# by *when* you press, not by how long. Windows are in *seconds*, not
+# pixels -- distance / current speed. Speed ramps up over an episode, so a
+# fixed-pixel window quietly loses reaction time as the game speeds up. A
+# pure "divide the old pixel window by current speed" conversion isn't quite
+# enough either: hazard *width* is fixed in pixels, so how much time a
+# hazard spends overlapping the pig shrinks as speed rises, while the
+# jump's own arc duration doesn't change at all -- the two don't scale
+# together. These windows were swept directly at four points across the
+# BASE_SPEED..MAX_SPEED range (200/250/300/340) and only kept if they
+# worked at all four, so they're robust across the whole ramp, not just
+# validated at one speed and assumed to generalize. Reused as-is for a
+# hazard on a platform's deck too -- x-distance and height are all that
+# matter to the timing, the elevation doesn't change any of it.
+LOW_WINDOW = (0.05, 0.30)   # for a hazard the fixed jump clears with room to
+                            # spare (bush) -- lower bound has margin beyond
+                            # the bare minimum, since a platform dismount is
+                            # a real ~13-step fall and a tight window can
+                            # close one frame before landing
+TALL_WINDOW = (0.30, 0.50)  # for a hazard that needs the jump's peak
+                            # actually over it (snow golem) -- later than
+                            # LOW_WINDOW, not just narrower, since the peak
+                            # itself arrives later relative to the press
 PLATFORM_JUMP_WINDOW = (0.15, 0.50)  # re-swept after fixing the landing-position
                                      # bug -- the old (buggy) landing target was
                                      # more lenient, so the window that worked
@@ -65,9 +69,9 @@ def _wants_jump(hz, g):
     if hz is None:
         return False
     t = (hz.x - W.PIG_X) / g.speed
-    if hz.top_band > 60:  # needs a full hold
-        return HOLD_WINDOW[0] <= t <= HOLD_WINDOW[1]
-    return TAP_WINDOW[0] <= t <= TAP_WINDOW[1]
+    if hz.top_band > 60:  # tall enough that the jump's peak must be over it
+        return TALL_WINDOW[0] <= t <= TALL_WINDOW[1]
+    return LOW_WINDOW[0] <= t <= LOW_WINDOW[1]
 
 
 def _riding_platform(g, plat):
@@ -91,10 +95,11 @@ def expert_action(g):
     hz = g.next_hazard()
     plat = g._next_platform()
 
-    # Consider jumping onto an upcoming platform. A held jump big enough to
-    # reach the deck is also more than enough to clear whatever ground hazard
-    # it spans (platforms only ever pair with a short bush), so there's no
-    # conflict between "aim for the platform" and "clear what's beneath it."
+    # Consider jumping onto an upcoming platform. The fixed jump reaches
+    # well above the deck, which is also more than enough to clear whatever
+    # ground hazard it spans (platforms only ever pair with a short bush),
+    # so there's no conflict between "aim for the platform" and "clear
+    # what's beneath it."
     if plat is not None and plat.x_start > W.PIG_X and g.on_ground:
         t = (plat.x_start - W.PIG_X) / g.speed
         if PLATFORM_JUMP_WINDOW[0] <= t <= PLATFORM_JUMP_WINDOW[1]:
@@ -103,16 +108,12 @@ def expert_action(g):
         return ACTION_JUMP  # keep rising onto the deck
 
     # No "and g.on_ground" gate here on purpose: sending JUMP while airborne
-    # and still falling (not yet landed, e.g. dismounting a platform) is a
-    # harmless no-op in the physics, but it means that if the window is
-    # already open at the moment landing actually happens, the launch
-    # fires on that exact frame -- instead of missing entirely because the
-    # window had already closed by the time on_ground next became true.
-    if _wants_jump(hz, g):
-        return ACTION_JUMP
-    if not g.on_ground and g.vy < 0:
-        return ACTION_JUMP  # already committed to this jump -- keep holding
-    return ACTION_NOOP
+    # is a harmless no-op in the physics (a new jump only launches from the
+    # ground), but it means that if the window is already open at the exact
+    # moment landing happens (e.g. dismounting a platform), the launch fires
+    # on that frame -- instead of missing entirely because the window had
+    # already closed by the time on_ground next became true.
+    return ACTION_JUMP if _wants_jump(hz, g) else ACTION_NOOP
 
 
 def main():

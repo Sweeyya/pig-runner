@@ -17,7 +17,13 @@ DT = W.DT
 # --- Motion -----------------------------------------------------------------
 GRAVITY = 3600.0               # px/sec^2 -- 4x game.py's original 900, matching world.py's 4x scale
 JUMP_V = 1200.0                # px/sec -- 4x original 300, same reasoning
-JUMP_CUT = 0.8                 # releasing while rising scales vy (dimensionless -- unchanged)
+# Single fixed-height jump, Chrome-Dino style -- no hold-for-higher mechanic.
+# A variable-height jump was tried and dropped: our bush is wide enough that
+# reliably clearing it needs an arc that stays up almost as long as a full
+# jump anyway, so a genuinely shorter/lower "tap" can't reliably clear it at
+# any speed -- there's no real middle height to hold for. Distinguishing
+# hazards is done by *when* you jump (see play.py's press-time windows),
+# not by how long you hold the button once you have.
 
 # --- Hazard spacing, expressed in time so it stays fair as speed ramps -----
 # MIN_GAP_SEC has a real floor: a platform can reach ~184px ahead of its own
@@ -109,15 +115,13 @@ class PigRunner:
             return 0.0
 
         self._speed = self._current_speed()
-        jump_held = action == ACTION_JUMP
 
-        # Variable-height jump: press to launch, release while rising to cut it
-        # short. No hidden timers -- vy and on_ground fully describe the arc.
-        if jump_held and self.on_ground:
+        # Fixed-height jump: pressing while grounded launches the full arc.
+        # Holding or releasing afterward does nothing -- on_ground already
+        # fully describes whether another press can launch a new one.
+        if action == ACTION_JUMP and self.on_ground:
             self.vy = -JUMP_V
             self.on_ground = False
-        elif not jump_held and self.vy < 0.0:
-            self.vy *= JUMP_CUT
 
         prev_y = self.pig_y
         self.vy += GRAVITY * DT
