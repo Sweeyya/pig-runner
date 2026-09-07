@@ -270,7 +270,18 @@ _HAZARD_DRAW = {
 
 def _draw_pig(surf, g, anim):
     name = f"pig_{anim.anim}_{anim.frame:02d}"
-    x, y = W.PIG_X, int(g.pig_y)
+    # The jump's rise is a fixed height *relative to wherever it launched
+    # from* -- fine from the ground, but launching from an already-elevated
+    # platform deck (e.g. clearing a hazard on it) stacks that same rise on
+    # top of the deck's own height, which can carry the real g.pig_y well
+    # above the top of the canvas. Clamping only the drawn position (not
+    # g.pig_y itself) keeps the pig on-screen without touching the physics
+    # a real clamp would disturb -- an earlier attempt at clamping the
+    # actual trajectory cut the jump's hangtime short too, which broke the
+    # timing a deck hazard's horizontal clearance depends on (500/500 ->
+    # 48/500 in the standard sweep). Purely cosmetic fix, verified inert on
+    # gameplay by construction: collision still uses the real g.pig_y.
+    x, y = W.PIG_X, max(int(g.pig_y), 0)
     if _blit_sprite(surf, (name, "pig_run_00"), (x, y), (W.PIG_W, W.PIG_H)):
         return
 
