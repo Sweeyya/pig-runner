@@ -36,8 +36,8 @@ files high-resolution rather than pre-shrinking them.
 | `pig_land_00.png` | 64x64 | landing squash, shows for 4 steps |
 | `pig_death_00..03.png` | 64x64 | plays once at 10fps |
 | `bush_00.png` | 64x48 | sweet berry bush — the only hazard right now; same file whether it's spawned on the ground or on a platform's deck, since it's the same class either way |
-| `bg_sky.png` | 2560x1200 | static sky band, above the horizon. Stretched to fill the canvas from y=0 to GROUND_Y — doesn't scroll |
-| `bg_ground.png` | 2560x240 | static ground band, below the horizon. Stretched to fill GROUND_Y to the canvas bottom — doesn't scroll either; the horizon lines up with GROUND_Y exactly because each band is scaled to its own region independently, regardless of the source art's own proportions |
+| `bg_sky.png` | 2560x1200 | static sky band, above the horizon. Stretched to fill the canvas from y=0 to GROUND_Y — never scrolls |
+| `bg_ground.png` | any width x240 | ground band, below the horizon. Drawn to tile seamlessly left-to-right and scrolls at full world speed (it's the same layer hazards stand on, not a parallax backdrop) -- so unlike every other asset here, its width is **not** stretched to fit; only scaled uniformly by height (240 = 4x of NATIVE_H - GROUND_Y), so the repeat isn't warped relative to itself. The horizon still lines up with GROUND_Y exactly, since that split happens before this scaling, independent of the sky band |
 | `platform_left.png` / `platform_right.png` | 256x256 | end caps for a platform's deck — closed border on the outward side so the platform reads as a clean edge, not a cut-off tile |
 | `platform_mid_00..02.png` | 256x256 | middle-fill tiles, randomized per slot (seeded off the platform itself, so it's stable frame to frame) so a long platform doesn't look like one tile stamped repeatedly |
 

@@ -162,15 +162,31 @@ def _draw_clouds(surf, scroll):
         pygame.draw.ellipse(surf, CLOUD, (x + w * 0.35, cy - 10, w * 0.6, 22))
 
 
+def _draw_ground_tiled(surf, scroll):
+    """The ground scrolls at full world speed (it's the same layer hazards
+    stand on, not a parallax backdrop), tiling bg_ground.png -- drawn to
+    repeat seamlessly left-to-right -- rather than stretching one copy to
+    fill the screen, which would distort it relative to its own loop."""
+    sprite = load_sprite("bg_ground")
+    if sprite is None:
+        return False
+    asset_w, asset_h = sprite.get_size()
+    tile_w = round(asset_w / 4)  # native display size, matching the 4x art convention
+    band_h = W.NATIVE_H - W.GROUND_Y
+    x = -(int(scroll) % tile_w)
+    while x < W.NATIVE_W:
+        _blit_sprite(surf, "bg_ground", (x, W.GROUND_Y), (tile_w, band_h))
+        x += tile_w
+    return True
+
+
 def _draw_background(surf, scroll):
-    """Sky + ground backdrop -- neither one scrolls, so this is one static
-    image per band, not a tiled/scrolling texture. Falls back to a plain
-    sky fill with procedural clouds and a flat ground rect if the art
-    isn't there yet, same as every other sprite in this file."""
+    """Sky + ground backdrop. The sky is one static stretched image (it
+    doesn't scroll); the ground tiles and scrolls (see _draw_ground_tiled).
+    Falls back to a plain sky fill with procedural clouds and a flat ground
+    rect if the art isn't there yet, same as every other sprite here."""
     sky_drawn = _blit_sprite(surf, "bg_sky", (0, 0), (W.NATIVE_W, W.GROUND_Y))
-    ground_drawn = _blit_sprite(
-        surf, "bg_ground", (0, W.GROUND_Y), (W.NATIVE_W, W.NATIVE_H - W.GROUND_Y)
-    )
+    ground_drawn = _draw_ground_tiled(surf, scroll)
     if not sky_drawn:
         surf.fill(SKY)
         _draw_clouds(surf, scroll)

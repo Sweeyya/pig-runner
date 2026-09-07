@@ -149,14 +149,20 @@ def main():
 
     # Background: sky above the horizon, snow-capped ground below it. Split
     # at the horizon (measured directly off the source art -- it isn't at a
-    # round fraction) so each band can be stretched independently to fill
-    # its own native-canvas region without shifting where the ground line
-    # actually falls. Bands are the full NATIVE_W wide since neither one
-    # scrolls -- this is a static backdrop, not a tiled/scrolling texture.
+    # round fraction). The sky never scrolls, so it's stretched to exactly
+    # fill its native-canvas region (0..GROUND_Y) -- but the ground was
+    # drawn to tile seamlessly left-to-right, so it scrolls in render.py and
+    # must NOT be stretched to a fixed width, only scaled uniformly (height
+    # drives the factor, width follows) or the repeat seam would be visibly
+    # warped relative to the rest of the loop.
     bg = load_rgba(f"{SRC}/backgroun-and-ground.png")
     sky_band, ground_band = split_bands(bg, horizon_frac=0.768)
-    save(pygame.transform.smoothscale(sky_band, (2560, 1200)), "bg_sky")     # 4x of 640x300 (GROUND_Y)
-    save(pygame.transform.smoothscale(ground_band, (2560, 240)), "bg_ground")  # 4x of 640x60 (NATIVE_H - GROUND_Y)
+    save(pygame.transform.smoothscale(sky_band, (2560, 1200)), "bg_sky")  # 4x of 640x300 (GROUND_Y)
+
+    gw, gh = ground_band.get_size()
+    ground_scale = 240 / gh  # 240 = 4x of 60 (NATIVE_H - GROUND_Y)
+    ground_out = (round(gw * ground_scale), 240)
+    save(pygame.transform.smoothscale(ground_band, ground_out), "bg_ground")
 
     # Platform blocks: a 5-block sheet. Block 2 (0-indexed: 1) is a left
     # edge cap, block 4 (index 3) a right edge cap -- both have a closed
