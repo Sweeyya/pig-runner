@@ -31,11 +31,6 @@ PIG_EYE    = ( 40,  30,  35)
 BUSH_GREEN = ( 58, 110,  47)
 BUSH_DARK  = ( 40,  82,  35)
 BERRY_RED  = (191,  54,  46)
-STONE      = (150, 150, 155)
-STONE_DARK = (110, 110, 116)
-SNOW_WHITE = (240, 246, 250)
-SNOW_SHADE = (200, 215, 225)
-GOLEM_NOSE = (219, 130,  40)
 HITBOX     = (255,  64,  64)
 BAND       = (255, 190,  60)
 TEXT       = (250, 250, 250)
@@ -199,24 +194,6 @@ def _draw_bush(surf, hz):
             pygame.draw.rect(surf, BERRY_RED, (x + bx, y + by, 2, 2))
 
 
-def _draw_snow_golem(surf, hz):
-    x, y = _hazard_pos(hz)
-    if _blit_sprite(surf, "snow_golem_00", (x, y), (hz.w, hz.h)):
-        return
-    # two stacked snow blocks (bigger below, smaller above) plus a small
-    # pumpkin-orange nose -- reads as "snow golem", not just "tall block".
-    w = hz.w
-    lower_h = int(hz.h * 0.58)
-    upper_h = hz.h - lower_h
-    pygame.draw.rect(surf, SNOW_SHADE, (x, y + upper_h, w, lower_h))
-    pygame.draw.rect(surf, SNOW_WHITE, (x + 3, y + upper_h + 3, w - 6, lower_h - 6))
-    head_w = int(w * 0.8)
-    hx = x + (w - head_w) // 2
-    pygame.draw.rect(surf, SNOW_SHADE, (hx, y, head_w, upper_h))
-    pygame.draw.rect(surf, SNOW_WHITE, (hx + 3, y + 3, head_w - 6, upper_h - 6))
-    pygame.draw.rect(surf, GOLEM_NOSE, (hx + head_w - 6, y + upper_h // 2 - 2, 6, 4))
-
-
 _PLATFORM_MID_NAMES = ("platform_mid_00", "platform_mid_01", "platform_mid_02")
 
 
@@ -272,7 +249,6 @@ def _draw_platform(surf, p):
 
 _HAZARD_DRAW = {
     "bush": _draw_bush,
-    "snow_golem": _draw_snow_golem,
 }
 
 

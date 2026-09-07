@@ -6,15 +6,15 @@ fixed speed).
 """
 
 # --- Hazards ------------------------------------------------------------
-ENABLE_SNOW_GOLEM = True
 ENABLE_PLATFORMS = True
 
 # Relative spawn weights among whatever hazards are enabled. The bush is
 # always available as the baseline. Used both for ground spawns and for
-# whatever hazard lands on a platform's own deck.
+# whatever hazard lands on a platform's own deck. A single-entry dict still
+# works fine through the same weighted-choice code -- no special-casing
+# needed if another hazard type shows up later.
 SPAWN_WEIGHTS = {
     "bush": 3,
-    "snow_golem": 2,
 }
 
 # --- Speed ramp -----------------------------------------------------------
@@ -29,8 +29,6 @@ RAMP_STEPS = 700.0      # steps to go from BASE_SPEED to MAX_SPEED
 # --- Platforms --------------------------------------------------------
 # A platform spans a ground-level bush, giving an alternate route: jump onto
 # it, run across, drop back down, instead of timing a jump over the bush.
-# Only ever pairs with a bush, not a snow_golem -- a snow_golem needs the
-# jump's peak height, which would also hit the deck's own underside.
 #
 # Height is well below the jump's peak (~188px) on purpose -- a human
 # doesn't time a jump as precisely as a script, so landing on top should
@@ -41,7 +39,7 @@ RAMP_STEPS = 700.0      # steps to go from BASE_SPEED to MAX_SPEED
 PLATFORM_CHANCE = 0.5   # fraction of eligible hazards that get one
 PLATFORM_HEIGHT = 120.0  # px above ground the platform surface sits
 
-# A platform's own deck may separately carry a hazard (bush or snow_golem)
-# the pig has to clear while riding it -- the elevated route isn't just a
-# free bypass. Positioned with margin from both edges (hazards.py).
+# A platform's own deck may separately carry a bush the pig has to clear
+# while riding it -- the elevated route isn't just a free bypass. Positioned
+# with margin from both edges (hazards.py).
 PLATFORM_HAZARD_CHANCE = 0.5

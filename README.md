@@ -3,9 +3,9 @@
 ![demo](assets/demo.gif)
 
 A Minecraft-flavored endless runner built as an RL environment. A pig
-auto-runs right; sweet berry bushes, snow golems, and elevated grass
-platforms come at it — jump, or take the high road, which has its own
-hazards to clear once you're up there. Built to train under
+auto-runs right; sweet berry bushes and elevated grass platforms come at
+it — jump, or take the high road, which has its own hazards to clear once
+you're up there. Built to train under
 [r2dreamer](https://github.com/NM512/r2dreamer) (DreamerV3), but the
 interface is plain Gym-shaped enough to point any algorithm at it.
 
@@ -45,20 +45,19 @@ Every hazard is a flag. Flip one, run `play.py`, get a different game — no
 other code changes needed:
 
 ```python
-ENABLE_SNOW_GOLEM = True   # needs the jump's peak actually over it -- tighter timing than a bush
-ENABLE_PLATFORMS  = True   # alternate route over a bush -- with its own hazards on deck
+ENABLE_PLATFORMS  = True   # alternate route over a bush -- with its own hazard on deck
 ENABLE_SPEED_RAMP = True   # pace picks up over the episode
 ```
 
-Both hazard flags off reproduces the original minimal version exactly: one
-hazard (the bush), two actions, fixed speed.
+`ENABLE_PLATFORMS = False` reproduces the original minimal version exactly:
+one hazard (the bush), two actions, fixed speed.
 
 ## The game
 
 | | |
 |---|---|
 | Actions | `0` nothing, `1` jump |
-| Hazards | bush (easy timing), snow golem (tighter timing -- the jump's peak has to land on it) — either can appear on the ground or on a platform's deck |
+| Hazards | bush — can appear on the ground or on a platform's deck |
 | Observation | 11 floats, **never pixels** — see below |
 | Reward | +1 per hazard cleared, 0 otherwise, 0 on death |
 | Episode ends | on death; capped at 1000 steps (~20s at 50 steps/s) |
@@ -66,15 +65,16 @@ hazard (the bush), two actions, fixed speed.
 
 A platform is terrain, not a hazard — it always spans a ground-level bush,
 so there's always a route underneath. Jumping onto one instead skips that
-bush, but the deck itself may carry its own bush or snow golem to clear
-while riding it, so the elevated route isn't a free bypass.
+bush, but the deck itself may carry its own bush to clear while riding it,
+so the elevated route isn't a free bypass.
 
 Baselines with everything on, measured in cumulative reward (hazards
 cleared) rather than the on-screen counter (which ticks by seconds
-survived, not hazards -- see below): random policy scores **0** and dies
-within the first few hundred steps; a scripted policy that reads each
-hazard's height correctly scores **9-11** and survives the full cap. That
-gap is the learning signal.
+survived, not hazards -- see below): random policy averages **~2.5** and
+rarely survives the full cap (a bush alone is forgiving enough that random
+jumping occasionally strings a few together by luck); a scripted policy
+that times its jumps correctly scores **8-12** and survives every episode.
+That gap is the learning signal.
 
 ## Observation
 
@@ -85,7 +85,7 @@ gap is the learning signal.
 | 2 | vertical velocity | positive is up |
 | 3 | on ground | 0 or 1 (true whether on real ground or a platform's deck) |
 | 4 | current speed | normalized 0 (start) to 1 (ramp cap) — without this, "distance" alone would mean a different amount of reaction time depending on speed |
-| 5, 6 | next ground hazard's bottom/top band | the height range it occupies above ground — not a type label, so the agent reads geometry rather than memorizing a category |
+| 5, 6 | next ground hazard's bottom/top band | the height range it occupies above ground — not a type label, so the agent reads geometry rather than memorizing a category. Currently constant whenever a hazard exists, since the bush is the only hazard type; kept as a real geometric signal, not a name, so a second hazard type can slot back in later without changing the observation shape |
 | 7, 8 | next platform's distance/height | clipped far/0 if none is coming |
 | 9, 10 | next platform-deck hazard's bottom/top band | same idea as 5/6, but for whatever's waiting on the platform itself — 0/0 if the platform (or no platform) carries none |
 
@@ -99,9 +99,8 @@ and it launches the full jump; holding or releasing afterward does nothing.
 A shorter, held-for-less jump was tried and dropped -- the bush is wide
 enough that reliably clearing it needs an arc that stays up almost as long
 as the full jump anyway, so there's no real lower height worth holding for.
-Hazards are told apart by *when* you have to press (a bush forgives a wide
-window; a snow golem needs the jump's peak actually over it, a tighter
-window), not by how the button is pressed.
+The only hazard left (a snow golem was cut -- see below) is cleared purely
+by timing *when* you press, not by how the button is pressed.
 
 ## Files
 
@@ -184,3 +183,12 @@ wouldn't change the observation or the decision-making, just the palette.
 Flight was considered and cut entirely: with no cost it would dominate every
 other action, so the agent would just fly the whole episode and learn
 nothing.
+
+A snow golem (a taller hazard needing a held jump) was tried and then cut.
+It made sense under a variable-height jump, but once jump became a single
+fixed-height arc (see Jump, above) the golem's only remaining difference
+from the bush was a tighter timing window, not a different action to
+choose — a harder version of the same puzzle, not a new one. Cutting it
+keeps the hazard roster matched to what the mechanics actually support
+right now; the bottom/top-band observation fields stay in place either way,
+since they were never a type label to begin with.

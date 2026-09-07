@@ -35,8 +35,7 @@ files high-resolution rather than pre-shrinking them.
 | `pig_fall_00.png` | 64x64 | falling (vy > 0) |
 | `pig_land_00.png` | 64x64 | landing squash, shows for 4 steps |
 | `pig_death_00..03.png` | 64x64 | plays once at 10fps |
-| `bush_00.png` | 64x48 | sweet berry bush — same file whether it's spawned on the ground or on a platform's deck, since it's the same class either way |
-| `snow_golem_00.png` | 32x88 | 2-block stack (body + head); needs the jump's peak actually over it, tighter timing than the bush. Narrower than you'd guess from a straight 4x scale -- combined with the bigger pig, a wider obstacle became mathematically uncrossable at the game's slowest speed (see hazards.py). Also shared between ground and deck spawns |
+| `bush_00.png` | 64x48 | sweet berry bush — the only hazard right now; same file whether it's spawned on the ground or on a platform's deck, since it's the same class either way |
 | `bg_sky.png` | 2560x1200 | static sky band, above the horizon. Stretched to fill the canvas from y=0 to GROUND_Y — doesn't scroll |
 | `bg_ground.png` | 2560x240 | static ground band, below the horizon. Stretched to fill GROUND_Y to the canvas bottom — doesn't scroll either; the horizon lines up with GROUND_Y exactly because each band is scaled to its own region independently, regardless of the source art's own proportions |
 | `platform_left.png` / `platform_right.png` | 256x256 | end caps for a platform's deck — closed border on the outward side so the platform reads as a clean edge, not a cut-off tile |
@@ -55,15 +54,10 @@ repo was generated from hand-drawn source art via `tools/build_sprites.py`
 (trim/split/cut → squash-stretch or scale → downscale) — see that file if
 you draw more poses or blocks and want to regenerate.
 
-Not yet drawn: a falling-snow (or similar) particle layer over the flat
-sky, replacing the old procedural clouds -- clouds still draw in the
-no-sprite fallback (`_draw_clouds` in render.py) but never appear once
-`bg_sky.png` exists, since the two looks don't mix.
-
 ## Palette
 
 Sky/ground now come from `bg_sky.png`/`bg_ground.png` art rather than flat
 fill colors, so the swatches below only describe the procedural fallback
-and the hazards/pig, which are still colored rects:
+and the hazard/pig, which are still colored rects:
 
-Sky `#87BAE3` - cloud `#DEEEF7` - grass `#6AAA4B` / edge `#568C3D` - dirt `#866043` / dark `#6E4E37` - pig `#F1A7B2` / dark `#CE818E` / snout `#E08998` - bush `#3A6E2F` / dark `#285223` - berry `#BF362E` - snow `#F0F6FA` / shade `#C8D7E1` - golem nose `#DB8228` - platform (fallback only): same grass/dirt tones as the ground
+Sky `#87BAE3` - cloud `#DEEEF7` - grass `#6AAA4B` / edge `#568C3D` - dirt `#866043` / dark `#6E4E37` - pig `#F1A7B2` / dark `#CE818E` / snout `#E08998` - bush `#3A6E2F` / dark `#285223` - berry `#BF362E` - platform (fallback only): same grass/dirt tones as the ground

@@ -21,10 +21,9 @@ Platforms are terrain, not hazards: they're never checked for collision
 themselves (see game.py's landing logic) and only ever pair with a
 ground-level Bush, positioned well above tap-jump-clearing height for one,
 so there is always a real ground route underneath. A platform's own deck
-may separately carry a hazard (a second, independent Bush or SnowGolem
-instance with surface_y set to that platform's surface) -- that hazard
-lives in the same hazards list as everything else, not on the Platform
-object.
+may separately carry a hazard (a second, independent Bush instance with
+surface_y set to that platform's surface) -- that hazard lives in the same
+hazards list as everything else, not on the Platform object.
 """
 
 import config as C
@@ -34,15 +33,6 @@ import world as W
 # Every number here is 4x the original v0/v1 tuning, matching world.py and
 # game.py's 4x scale-up -- same relative clearances, just more sprite detail.
 BUSH_W, BUSH_H = 64, 48                  # the fixed jump clears this with room to spare
-TALL_W, TALL_H = 32, 88                   # needs the jump's peak (~188) actually over it, so
-                                           # timing is tighter than the bush's -- not a taller jump.
-                                           # Not simply 4x the original -- combined pig+obstacle
-                                           # width now takes real time to cross at PIG_W=64, and
-                                           # that time has to fit inside the fixed (scale-invariant)
-                                           # duration a jump can spend above a given height. A wider,
-                                           # taller obstacle here becomes mathematically uncrossable
-                                           # at BASE_SPEED; verified empirically across the full
-                                           # speed range instead of assumed from the scale factor.
 
 PLATFORM_THICKNESS = 24
 # NOT scaled with everything else on purpose: how wide a platform needs to be
@@ -110,12 +100,6 @@ class Bush(Hazard):
     bottom_band, top_band = 0.0, float(BUSH_H)
 
 
-class SnowGolem(Hazard):
-    kind = "snow_golem"
-    w, h = TALL_W, TALL_H
-    bottom_band, top_band = 0.0, float(TALL_H)
-
-
 class Platform:
     """Terrain, not a hazard -- never collided with directly. Spans a Bush,
     floating well above tap-jump height, so the ground route always exists.
@@ -152,15 +136,11 @@ class Platform:
 
 _TYPES = {
     "bush": Bush,
-    "snow_golem": SnowGolem,
 }
 
 
 def _enabled_weights():
-    weights = {"bush": C.SPAWN_WEIGHTS.get("bush", 1)}
-    if C.ENABLE_SNOW_GOLEM:
-        weights["snow_golem"] = C.SPAWN_WEIGHTS.get("snow_golem", 1)
-    return weights
+    return {"bush": C.SPAWN_WEIGHTS.get("bush", 1)}
 
 
 def _pick_kind(rng, weights):

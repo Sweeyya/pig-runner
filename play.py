@@ -20,29 +20,24 @@ from game import ACTION_JUMP, ACTION_NOOP, PigRunner
 from render import Animator, draw_hud, draw_world, _draw_debug
 
 # Jump is a single fixed-height arc (Chrome-Dino style) -- holding or
-# releasing after the press does nothing, so hazards are told apart purely
-# by *when* you press, not by how long. Windows are in *seconds*, not
-# pixels -- distance / current speed. Speed ramps up over an episode, so a
-# fixed-pixel window quietly loses reaction time as the game speeds up. A
-# pure "divide the old pixel window by current speed" conversion isn't quite
-# enough either: hazard *width* is fixed in pixels, so how much time a
-# hazard spends overlapping the pig shrinks as speed rises, while the
-# jump's own arc duration doesn't change at all -- the two don't scale
-# together. These windows were swept directly at four points across the
-# BASE_SPEED..MAX_SPEED range (200/250/300/340) and only kept if they
-# worked at all four, so they're robust across the whole ramp, not just
-# validated at one speed and assumed to generalize. Reused as-is for a
-# hazard on a platform's deck too -- x-distance and height are all that
-# matter to the timing, the elevation doesn't change any of it.
-LOW_WINDOW = (0.05, 0.30)   # for a hazard the fixed jump clears with room to
-                            # spare (bush) -- lower bound has margin beyond
-                            # the bare minimum, since a platform dismount is
-                            # a real ~13-step fall and a tight window can
-                            # close one frame before landing
-TALL_WINDOW = (0.30, 0.50)  # for a hazard that needs the jump's peak
-                            # actually over it (snow golem) -- later than
-                            # LOW_WINDOW, not just narrower, since the peak
-                            # itself arrives later relative to the press
+# releasing after the press does nothing, so a hazard is cleared purely by
+# *when* you press. JUMP_WINDOW is in *seconds*, not pixels -- distance /
+# current speed. Speed ramps up over an episode, so a fixed-pixel window
+# quietly loses reaction time as the game speeds up. A pure "divide the old
+# pixel window by current speed" conversion isn't quite enough either:
+# hazard *width* is fixed in pixels, so how much time a hazard spends
+# overlapping the pig shrinks as speed rises, while the jump's own arc
+# duration doesn't change at all -- the two don't scale together. Swept
+# directly at four points across the BASE_SPEED..MAX_SPEED range
+# (200/250/300/340) and only kept because it worked at all four, so it's
+# robust across the whole ramp, not just validated at one speed and assumed
+# to generalize. Reused as-is for a hazard on a platform's deck too --
+# x-distance is all that matters to the timing, the elevation doesn't
+# change any of it.
+JUMP_WINDOW = (0.05, 0.30)  # lower bound has margin beyond the bare minimum,
+                            # since a platform dismount is a real ~13-step
+                            # fall and a tight window can close one frame
+                            # before landing
 PLATFORM_JUMP_WINDOW = (0.15, 0.50)  # re-swept after fixing the landing-position
                                      # bug -- the old (buggy) landing target was
                                      # more lenient, so the window that worked
@@ -66,13 +61,11 @@ def _end_episode(g, anim, reason, episodes, args, always_reset):
 def _wants_jump(hz, g):
     """Should we press jump right now to clear this hazard? Works the same
     whether hz is on the ground or on a platform's deck -- only x-distance
-    and its own height matter, not absolute elevation."""
+    matters, not absolute elevation."""
     if hz is None:
         return False
     t = (hz.x - W.PIG_X) / g.speed
-    if hz.top_band > 60:  # tall enough that the jump's peak must be over it
-        return TALL_WINDOW[0] <= t <= TALL_WINDOW[1]
-    return LOW_WINDOW[0] <= t <= LOW_WINDOW[1]
+    return JUMP_WINDOW[0] <= t <= JUMP_WINDOW[1]
 
 
 def _riding_platform(g, plat):
