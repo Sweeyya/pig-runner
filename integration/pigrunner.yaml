@@ -12,7 +12,7 @@ device: ${device}
 
 size: [64, 64]          # unused: nothing renders during training
 encoder:
-  mlp_keys: '.*'        # the 4-number state vector goes to the MLP
+  mlp_keys: '.*'        # the 11-number state vector goes to the MLP
   cnn_keys: '$^'        # matches nothing, so no pixels ever reach the model
 decoder:
   mlp_keys: '.*'

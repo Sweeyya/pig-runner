@@ -26,8 +26,12 @@ surface_y set to that platform's surface) -- that hazard lives in the same
 hazards list as everything else, not on the Platform object.
 """
 
-import config as C
-import world as W
+try:  # works both standalone and when copied into r2dreamer's envs/ package
+    from . import config as C
+    from . import world as W
+except ImportError:
+    import config as C
+    import world as W
 
 # --- Geometry ---------------------------------------------------------------
 # Every number here is 4x the original v0/v1 tuning, matching world.py and

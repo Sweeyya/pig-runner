@@ -8,9 +8,14 @@ Units are native-canvas pixels. +y is down, so a negative vy means rising.
 
 import random
 
-import config as C
-import hazards as H
-import world as W
+try:  # works both standalone and when copied into r2dreamer's envs/ package
+    from . import config as C
+    from . import hazards as H
+    from . import world as W
+except ImportError:
+    import config as C
+    import hazards as H
+    import world as W
 
 DT = W.DT
 
