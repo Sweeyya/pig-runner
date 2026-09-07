@@ -30,7 +30,7 @@ files high-resolution rather than pre-shrinking them.
 
 | File | Size | Notes |
 |---|---|---|
-| `pig_run_00..03.png` | 64x64 | 4-frame run cycle, plays at 12fps |
+| `pig_run_00..03.png` | 64x64 | 4-frame run cycle, plays at 12fps -- 00/02 are the neutral pose, 01/03 are two genuinely different leg poses (reach, then tuck), not one pose squashed two ways |
 | `pig_rise_00.png` | 64x64 | rising (vy < 0) |
 | `pig_fall_00.png` | 64x64 | falling (vy > 0) |
 | `pig_land_00.png` | 64x64 | landing squash, shows for 4 steps |
@@ -38,8 +38,8 @@ files high-resolution rather than pre-shrinking them.
 | `bush_00.png` | 64x48 | sweet berry bush — the only hazard right now; same file whether it's spawned on the ground or on a platform's deck, since it's the same class either way |
 | `bg_sky.png` | 2560x1200 | static sky band, above the horizon. Stretched to fill the canvas from y=0 to GROUND_Y — never scrolls |
 | `bg_ground.png` | any width x240 | ground band, below the horizon. Drawn to tile seamlessly left-to-right and scrolls at full world speed (it's the same layer hazards stand on, not a parallax backdrop) -- so unlike every other asset here, its width is **not** stretched to fit; only scaled uniformly by height (240 = 4x of NATIVE_H - GROUND_Y), so the repeat isn't warped relative to itself. The horizon still lines up with GROUND_Y exactly, since that split happens before this scaling, independent of the sky band |
-| `platform_left.png` / `platform_right.png` | 256x256 | end caps for a platform's deck — closed border on the outward side so the platform reads as a clean edge, not a cut-off tile |
-| `platform_mid_00..02.png` | 256x256 | middle-fill tiles, randomized per slot (seeded off the platform itself, so it's stable frame to frame) so a long platform doesn't look like one tile stamped repeatedly |
+| `platform_left.png` / `platform_right.png` | 256x256 | end caps for a platform's deck — closed border on the outward side so the platform reads as a clean edge, not a cut-off tile. The inward side has its border trimmed off (see SEAM_TRIM in build_sprites.py) so it doesn't double up with the next tile's own border |
+| `platform_mid_00..02.png` | 256x256 | middle-fill tiles, randomized per slot (seeded off the platform itself, so it's stable frame to frame) so a long platform doesn't look like one tile stamped repeatedly. Both sides trimmed, same reason as above -- every block in the source sheet was drawn as its own fully-closed box, not pre-cut for tiling |
 
 Platform art draws a full tile (64x64) tall now, not the old thin decorative
 strip -- it reads as an actual floating block instead of a thin deck. This

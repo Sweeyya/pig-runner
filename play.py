@@ -133,8 +133,8 @@ def main():
             desktop_w, desktop_h = pygame.display.get_desktop_sizes()[0]
         except Exception:
             desktop_w, desktop_h = W.NATIVE_W * W.SCALE, W.NATIVE_H * W.SCALE
-        fit_w = int(desktop_w * 0.9) // W.NATIVE_W
-        fit_h = int(desktop_h * 0.85) // W.NATIVE_H
+        fit_w = int(desktop_w * 0.75) // W.NATIVE_W
+        fit_h = int(desktop_h * 0.7) // W.NATIVE_H
         scale = max(1, min(W.SCALE, fit_w, fit_h))
     win = pygame.display.set_mode((W.NATIVE_W * scale, W.NATIVE_H * scale))
     native = pygame.Surface((W.NATIVE_W, W.NATIVE_H))

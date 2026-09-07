@@ -45,6 +45,22 @@ def load_gif_frame(path, index):
     return surf.convert_alpha()
 
 
+def load_gif_frame_keyed(path, index, thresh=40):
+    """Some source frames were exported with an opaque background instead of
+    real alpha (frame 0 of Piggy-run.gif is plain RGB, solid black behind
+    the pig). Flood-fill from a corner -- guaranteed background -- to key
+    that out, leaving any interior near-black pixels (the outline linework)
+    untouched since they aren't contiguous with the border region."""
+    from PIL import Image as PILImage, ImageDraw as PILImageDraw
+
+    pil_img = PILImage.open(path)
+    pil_img.seek(index)
+    pil_img = pil_img.convert("RGBA")
+    PILImageDraw.floodfill(pil_img, (0, 0), (0, 0, 0, 0), thresh=thresh)
+    surf = pygame.image.frombuffer(pil_img.tobytes(), pil_img.size, "RGBA")
+    return surf.convert_alpha()
+
+
 def trim(surf):
     alpha = pygame.surfarray.array_alpha(surf)  # (W, H)
     cols = np.any(alpha > 8, axis=1)
@@ -115,19 +131,30 @@ def cut_blocks(surf, spans, row):
     return out
 
 
+def trim_side(surf, left=0, right=0):
+    """Crop pixels off the left/right edges -- used to remove a block's own
+    border stroke from whichever side will touch another tile, so two tiles
+    don't show a doubled black line where they meet."""
+    w, h = surf.get_size()
+    return surf.subsurface((left, 0, w - left - right, h)).copy()
+
+
 def main():
     still = trim(load_rgba(f"{SRC}/Piggy-still.png"))
-    run = trim(load_gif_frame(f"{SRC}/Piggy-run.gif", 1))
+    run = trim(load_gif_frame(f"{SRC}/Piggy-run.gif", 1))         # legs splayed outward -- an extension pose
+    run_tuck = trim(load_gif_frame_keyed(f"{SRC}/Piggy-run.gif", 0))  # legs gathered forward -- a collection pose
     bush = trim(load_rgba(f"{SRC}/bush.png"))
 
     save(place(bush, 256, 192), "bush_00")
 
-    # Run cycle: alternate the two drawn poses, exaggerating each with
-    # squash/stretch so the pair reads as a bounce, not just two stills.
-    save(place(still, 256, 256, 1.00, 1.00), "pig_run_00")   # neutral / passing
-    save(place(run, 256, 256, 0.90, 1.15), "pig_run_01")     # stretched -- up
-    save(place(still, 256, 256, 1.00, 1.00), "pig_run_02")   # neutral / passing
-    save(place(run, 256, 256, 1.12, 0.88), "pig_run_03")     # squashed -- down
+    # Run cycle: alternate neutral with two genuinely different leg poses
+    # (reach, then tuck) rather than the same pose squashed two different
+    # ways -- reusing one pose for both extremes read as bobbing in place,
+    # not running, since the legs themselves never actually moved.
+    save(place(still, 256, 256, 1.00, 1.00), "pig_run_00")        # neutral / passing
+    save(place(run, 256, 256, 0.90, 1.15), "pig_run_01")          # legs reach out -- stretched tall
+    save(place(still, 256, 256, 1.00, 1.00), "pig_run_02")        # neutral / passing
+    save(place(run_tuck, 256, 256, 1.12, 0.88), "pig_run_03")     # legs tuck under -- squashed
 
     save(place(still, 256, 256, 0.88, 1.22), "pig_rise_00")  # stretched tall
     save(place(run, 256, 256, 1.05, 0.95), "pig_fall_00")    # slight squash, trailing legs
@@ -165,18 +192,28 @@ def main():
     save(pygame.transform.smoothscale(ground_band, ground_out), "bg_ground")
 
     # Platform blocks: a 5-block sheet. Block 2 (0-indexed: 1) is a left
-    # edge cap, block 4 (index 3) a right edge cap -- both have a closed
-    # border on the outward side so they read as a clean end, not a cut-off
-    # tile. Blocks 1, 3, 5 (indices 0, 2, 4) are open on both sides and
-    # become the randomized middle fill, so a long platform doesn't look
-    # like the same tile stamped repeatedly.
+    # edge cap, block 4 (index 3) a right edge cap; 1, 3, 5 (indices 0, 2, 4)
+    # are the randomized middle fill. Every block was drawn as its own
+    # closed box, though -- each has a full border on *all four* sides, not
+    # just the outward-facing one -- so two tiles placed side by side showed
+    # a doubled black line at the seam instead of a continuous surface.
+    # SEAM_TRIM removes each block's own border from whichever side(s) will
+    # touch another tile (both sides for a middle tile; only the inward
+    # side for a cap), leaving the outward-facing border on the caps intact
+    # so they still read as a clean end. Measured directly off the source
+    # art: the thickest border stroke found across every row was ~40px, so
+    # 45px trims it with a small margin.
+    SEAM_TRIM = 45
     sky_blocks = load_rgba(f"{SRC}/sky-block.png")
     spans = [(211, 590), (656, 1037), (1102, 1483), (1541, 1926), (1994, 2359)]
     blocks = cut_blocks(sky_blocks, spans, row=(1255, 1639))
-    save(pygame.transform.smoothscale(blocks[1], (256, 256)), "platform_left")
-    save(pygame.transform.smoothscale(blocks[3], (256, 256)), "platform_right")
+    left_cap = trim_side(blocks[1], right=SEAM_TRIM)
+    right_cap = trim_side(blocks[3], left=SEAM_TRIM)
+    save(pygame.transform.smoothscale(left_cap, (256, 256)), "platform_left")
+    save(pygame.transform.smoothscale(right_cap, (256, 256)), "platform_right")
     for out_i, block_i in enumerate((0, 2, 4)):
-        save(pygame.transform.smoothscale(blocks[block_i], (256, 256)), f"platform_mid_{out_i:02d}")
+        mid = trim_side(blocks[block_i], left=SEAM_TRIM, right=SEAM_TRIM)
+        save(pygame.transform.smoothscale(mid, (256, 256)), f"platform_mid_{out_i:02d}")
 
 
 if __name__ == "__main__":
