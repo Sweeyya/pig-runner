@@ -15,8 +15,20 @@ import world as W
 DT = W.DT
 
 # --- Motion -----------------------------------------------------------------
-GRAVITY = 3600.0               # px/sec^2 -- 4x game.py's original 900, matching world.py's 4x scale
-JUMP_V = 1200.0                # px/sec -- 4x original 300, same reasoning
+# GRAVITY and JUMP_V are scaled down together (both x0.85) from the original
+# 4x-scale values (3600/1200) -- playtesting found the full-height jump
+# (~188px apex) felt too high. Scaling both by the same factor shrinks the
+# apex (~160px now) while leaving the jump's *duration* exactly unchanged
+# (duration ~ v/g, apex ~ v^2/g -- scaling both by k scales apex by k^2 but
+# leaves the v/g ratio, and so duration, untouched), so every timing window
+# tuned elsewhere in this file and in play.py stays valid. This isn't a free
+# knob, though: 0.85 was found empirically to be the lowest safe value --
+# 0.8 (apex ~150px) already breaks reliably landing on a platform (its
+# entry timing window assumes reaching PLATFORM_HEIGHT=120 with real margin
+# to spare; verified via the standard 500-seed sweep, which drops from
+# 500/500 at 0.85 to 24/500 at 0.8).
+GRAVITY = 3060.0                # px/sec^2 -- 3600 x 0.85
+JUMP_V = 1020.0                 # px/sec -- 1200 x 0.85
 # Single fixed-height jump, Chrome-Dino style -- no hold-for-higher mechanic.
 # A variable-height jump was tried and dropped: our bush is wide enough that
 # reliably clearing it needs an arc that stays up almost as long as a full

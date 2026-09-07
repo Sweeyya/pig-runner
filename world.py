@@ -9,11 +9,15 @@ constants in game.py are scaled the same way, which keeps every existing
 tuning (jump windows, hazard clearances, reaction times) identical in
 *seconds* -- only the pixel numbers changed, not the feel.
 
-Canvas height is the minimum needed to show the pig at max jump apex
-(~264px above ground) plus a small buffer, with a thin, deliberately
-undersized margin below ground for the dirt band -- that band is pure
-decoration, so it doesn't get to compete for screen space the way the
-sky's jump-clearance requirement does.
+Canvas height was originally sized to the minimum needed to show the pig
+at max jump apex (~264px above ground) plus a small buffer. Jump height
+was later tuned down (see game.py's GRAVITY/JUMP_V) to ~160px apex after
+playtesting found the original felt too high, without shrinking the canvas
+to match -- the extra headroom just reads as more sky now, which is fine,
+rather than re-deriving every asset/window size that depends on NATIVE_H.
+The margin below ground for the dirt band is still kept thin regardless --
+that band is pure decoration, so it doesn't get to compete for screen
+space the way the sky's jump-clearance requirement does.
 """
 
 FPS = 50

@@ -30,7 +30,7 @@ RAMP_STEPS = 700.0      # steps to go from BASE_SPEED to MAX_SPEED
 # A platform spans a ground-level bush, giving an alternate route: jump onto
 # it, run across, drop back down, instead of timing a jump over the bush.
 #
-# Height is well below the jump's peak (~188px) on purpose -- a human
+# Height is well below the jump's peak (~160px) on purpose -- a human
 # doesn't time a jump as precisely as a script, so landing on top should
 # only need "roughly the right moment", not split-second precision. 96 is
 # also the floor for a different reason: any lower and a pig resting on
