@@ -6,6 +6,7 @@ and they are picked up automatically, no renderer changes needed.
 """
 
 import os
+import random
 
 import numpy as np
 import pygame
@@ -166,6 +167,22 @@ def _draw_clouds(surf, scroll):
         pygame.draw.ellipse(surf, CLOUD, (x + w * 0.35, cy - 10, w * 0.6, 22))
 
 
+def _draw_background(surf, scroll):
+    """Sky + ground backdrop -- neither one scrolls, so this is one static
+    image per band, not a tiled/scrolling texture. Falls back to a plain
+    sky fill with procedural clouds and a flat ground rect if the art
+    isn't there yet, same as every other sprite in this file."""
+    sky_drawn = _blit_sprite(surf, "bg_sky", (0, 0), (W.NATIVE_W, W.GROUND_Y))
+    ground_drawn = _blit_sprite(
+        surf, "bg_ground", (0, W.GROUND_Y), (W.NATIVE_W, W.NATIVE_H - W.GROUND_Y)
+    )
+    if not sky_drawn:
+        surf.fill(SKY)
+        _draw_clouds(surf, scroll)
+    if not ground_drawn:
+        _draw_ground(surf)
+
+
 def _hazard_pos(hz):
     """Top-left draw position for a hazard sitting on its own surface_y."""
     return int(hz.x), int(hz.surface_y - hz.h)
@@ -200,15 +217,57 @@ def _draw_snow_golem(surf, hz):
     pygame.draw.rect(surf, GOLEM_NOSE, (hx + head_w - 6, y + upper_h // 2 - 2, 6, 4))
 
 
+_PLATFORM_MID_NAMES = ("platform_mid_00", "platform_mid_01", "platform_mid_02")
+
+
+def _has_platform_sprites():
+    return (
+        load_sprite("platform_left") is not None
+        and load_sprite("platform_right") is not None
+        and load_sprite("platform_mid_00") is not None
+    )
+
+
+def _platform_mid_variants(p, n):
+    """Deterministic per-platform choice of which middle tile art fills each
+    slot, so a long platform doesn't look like one tile stamped repeatedly.
+    Seeded off the object itself -- stable frame to frame without needing
+    anywhere to store it on the Platform."""
+    rng = random.Random(id(p))
+    return [rng.randrange(len(_PLATFORM_MID_NAMES)) for _ in range(n)]
+
+
 def _draw_platform(surf, p):
-    # A grass block, not a wooden plank: green cap + dirt body, reusing the
-    # exact ground palette so it reads as "the same grass," not a new material.
-    x = int(p.x_start)
-    w = int(p.x_end - p.x_start)
-    y = int(p.surface_y)
-    pygame.draw.rect(surf, GRASS_TOP, (x, y, w, 8))
-    pygame.draw.rect(surf, GRASS_EDGE, (x, y + 8, w, 4))
-    pygame.draw.rect(surf, DIRT, (x, y + 12, w, PLATFORM_THICKNESS - 12))
+    x0, y = int(p.x_start), int(p.surface_y)
+    w = int(p.x_end) - x0
+    tile = W.TILE
+
+    if _has_platform_sprites():
+        if w <= 2 * tile:
+            # Narrower than two full blocks (shouldn't happen at current
+            # config values, but stay safe): split evenly between the caps.
+            half = w // 2
+            _blit_sprite(surf, "platform_left", (x0, y), (half, tile))
+            _blit_sprite(surf, "platform_right", (x0 + half, y), (w - half, tile))
+            return
+        mid_total = w - 2 * tile
+        n_mid = max(1, round(mid_total / tile))
+        mid_w = mid_total / n_mid
+        _blit_sprite(surf, "platform_left", (x0, y), (tile, tile))
+        mx = x0 + tile
+        for variant in _platform_mid_variants(p, n_mid):
+            seg_w = int(round(mx + mid_w) - round(mx))  # whole-px segments that sum exactly to mid_total
+            _blit_sprite(surf, _PLATFORM_MID_NAMES[variant], (int(round(mx)), y), (seg_w, tile))
+            mx += mid_w
+        _blit_sprite(surf, "platform_right", (x0 + tile + mid_total, y), (tile, tile))
+        return
+
+    # Fallback: a grass block, not a wooden plank -- green cap + dirt body,
+    # reusing the exact ground palette so it reads as "the same grass," not
+    # a new material.
+    pygame.draw.rect(surf, GRASS_TOP, (x0, y, w, 8))
+    pygame.draw.rect(surf, GRASS_EDGE, (x0, y + 8, w, 4))
+    pygame.draw.rect(surf, DIRT, (x0, y + 12, w, PLATFORM_THICKNESS - 12))
 
 
 _HAZARD_DRAW = {
@@ -241,9 +300,7 @@ def _draw_pig(surf, g, anim):
 
 
 def draw_world(surf, g, anim, scroll=0.0):
-    surf.fill(SKY)
-    _draw_clouds(surf, scroll)
-    _draw_ground(surf)
+    _draw_background(surf, scroll)
     for p in g.platforms:
         _draw_platform(surf, p)
     for hz in g.hazards:
@@ -338,9 +395,7 @@ def draw_dream(surf, obs, scroll=0.0, hazard_w=64.0):
     (dist, height, _vel, _on_ground, _speed, h_bottom, h_top,
      p_dist, p_height, ph_bottom, ph_top) = obs
 
-    surf.fill(SKY)
-    _draw_clouds(surf, scroll)
-    _draw_ground(surf)
+    _draw_background(surf, scroll)
 
     has_platform = p_dist < DIST_CLIP_HI - 1e-3 and p_height > 1e-3
     if has_platform:

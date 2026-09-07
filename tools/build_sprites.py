@@ -92,6 +92,29 @@ def save(surf, name):
     print("wrote", name)
 
 
+def split_bands(surf, horizon_frac):
+    """Split a combined sky+ground image into two bands at horizon_frac (0-1
+    down the image). Each band is later stretched independently to fill its
+    own native-canvas region, so the art's horizon lands exactly on GROUND_Y
+    regardless of the source image's own proportions."""
+    w, h = surf.get_size()
+    split = round(h * horizon_frac)
+    sky = surf.subsurface((0, 0, w, split)).copy()
+    ground = surf.subsurface((0, split, w, h - split)).copy()
+    return sky, ground
+
+
+def cut_blocks(surf, spans, row):
+    """Crop fixed-size block tiles out of a sprite sheet. `spans` are
+    (x0, x1) inclusive pixel columns per block; `row` is the (y0, y1)
+    inclusive rows all blocks share."""
+    y0, y1 = row
+    out = []
+    for x0, x1 in spans:
+        out.append(surf.subsurface((x0, y0, x1 - x0 + 1, y1 - y0 + 1)).copy())
+    return out
+
+
 def main():
     still = trim(load_rgba(f"{SRC}/Piggy-still.png"))
     run = trim(load_gif_frame(f"{SRC}/Piggy-run.gif", 1))
@@ -123,6 +146,31 @@ def main():
         tint_toward(frame, (225, 25, 25), redness)
         fade(frame, alpha_factor)
         save(frame, f"pig_death_{i:02d}")
+
+    # Background: sky above the horizon, snow-capped ground below it. Split
+    # at the horizon (measured directly off the source art -- it isn't at a
+    # round fraction) so each band can be stretched independently to fill
+    # its own native-canvas region without shifting where the ground line
+    # actually falls. Bands are the full NATIVE_W wide since neither one
+    # scrolls -- this is a static backdrop, not a tiled/scrolling texture.
+    bg = load_rgba(f"{SRC}/backgroun-and-ground.png")
+    sky_band, ground_band = split_bands(bg, horizon_frac=0.768)
+    save(pygame.transform.smoothscale(sky_band, (2560, 1200)), "bg_sky")     # 4x of 640x300 (GROUND_Y)
+    save(pygame.transform.smoothscale(ground_band, (2560, 240)), "bg_ground")  # 4x of 640x60 (NATIVE_H - GROUND_Y)
+
+    # Platform blocks: a 5-block sheet. Block 2 (0-indexed: 1) is a left
+    # edge cap, block 4 (index 3) a right edge cap -- both have a closed
+    # border on the outward side so they read as a clean end, not a cut-off
+    # tile. Blocks 1, 3, 5 (indices 0, 2, 4) are open on both sides and
+    # become the randomized middle fill, so a long platform doesn't look
+    # like the same tile stamped repeatedly.
+    sky_blocks = load_rgba(f"{SRC}/sky-block.png")
+    spans = [(211, 590), (656, 1037), (1102, 1483), (1541, 1926), (1994, 2359)]
+    blocks = cut_blocks(sky_blocks, spans, row=(1255, 1639))
+    save(pygame.transform.smoothscale(blocks[1], (256, 256)), "platform_left")
+    save(pygame.transform.smoothscale(blocks[3], (256, 256)), "platform_right")
+    for out_i, block_i in enumerate((0, 2, 4)):
+        save(pygame.transform.smoothscale(blocks[block_i], (256, 256)), f"platform_mid_{out_i:02d}")
 
 
 if __name__ == "__main__":
