@@ -11,9 +11,14 @@ import random
 import numpy as np
 import pygame
 
-import world as W
-from game import DIST_CLIP_HI, OBS_DIST_SCALE, OBS_HEIGHT_SCALE
-from hazards import PLATFORM_THICKNESS
+try:  # works both standalone and when copied into r2dreamer's envs/ package
+    from . import world as W
+    from .game import DIST_CLIP_HI, OBS_DIST_SCALE, OBS_HEIGHT_SCALE
+    from .hazards import PLATFORM_THICKNESS
+except ImportError:
+    import world as W
+    from game import DIST_CLIP_HI, OBS_DIST_SCALE, OBS_HEIGHT_SCALE
+    from hazards import PLATFORM_THICKNESS
 
 ASSET_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
 
